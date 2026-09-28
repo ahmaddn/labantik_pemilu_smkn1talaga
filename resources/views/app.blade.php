@@ -6,9 +6,18 @@
 
 @php
     $customFavicon = \App\Models\AppSettingEvote::getValue('app_favicon', '/favicon.ico');
+    $appName = \App\Models\AppSettingEvote::getValue('app_name', 'LabAntik Pemilu SMKN 1 Talaga');
+
+    $faviconUrl = $customFavicon;
+    if ($customFavicon && $customFavicon !== '/favicon.ico' && file_exists(public_path($customFavicon))) {
+        $faviconUrl .= '?v=' . filemtime(public_path($customFavicon));
+    } else {
+        $faviconUrl .= '?v=' . time();
+    }
 @endphp
-        <link rel="icon" href="{{ $customFavicon }}" sizes="any">
-        <link rel="apple-touch-icon" href="{{ $customFavicon }}">
+        <link rel="icon" href="{{ $faviconUrl }}">
+        <link rel="shortcut icon" href="{{ $faviconUrl }}">
+        <link rel="apple-touch-icon" href="{{ $faviconUrl }}">
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +36,7 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
         <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
+            <title>{{ $appName }}</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">

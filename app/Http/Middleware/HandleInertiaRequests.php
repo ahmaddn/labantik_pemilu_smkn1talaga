@@ -36,17 +36,20 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $appName = AppSettingEvote::getValue('app_name', 'LabAntik Pemilu SMKN 1 Talaga');
+
         return [
             ...parent::share($request),
-            'name' => config('app.name'),
+            'name' => $appName,
             'auth' => [
                 'user' => $request->user(),
             ],
             'appSettings' => [
-                'app_name' => AppSettingEvote::getValue('app_name', 'LabAntik Pemilu SMKN 1 Talaga'),
+                'app_name' => $appName,
                 'app_description' => AppSettingEvote::getValue('app_description', 'Sistem Pemilihan Umum E-Voting SMKN 1 Talaga'),
                 'active_academic_year' => AppSettingEvote::getValue('active_academic_year', '2025/2026'),
                 'app_logo' => AppSettingEvote::getValue('app_logo'),
+                'app_favicon' => AppSettingEvote::getValue('app_favicon'),
             ],
         ];
     }

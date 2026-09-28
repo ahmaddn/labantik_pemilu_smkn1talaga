@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+@import '@vueup/vue-quill/dist/vue-quill.snow.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+    color-scheme: light dark;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+}
+
+html.dark body {
+    background-color: #090d16;
+    color: #f8fafc;
+}
+
+/* Quill Editor Styling Customization & Dark Mode */
+.ql-toolbar.ql-snow {
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+    border-color: #e2e8f0 !important;
+    background-color: #f8fafc;
+}
+
+.ql-container.ql-snow {
+    border-bottom-left-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+    border-color: #e2e8f0 !important;
+    font-family: inherit !important;
+    font-size: 0.875rem !important;
+    min-height: 160px;
+    background-color: #ffffff;
+}
+
+html.dark .ql-toolbar.ql-snow {
+    border-color: #334155 !important;
+    background-color: #0f172a;
+}
+
+html.dark .ql-container.ql-snow {
+    border-color: #334155 !important;
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+
+html.dark .ql-snow .ql-stroke {
+    stroke: #94a3b8 !important;
+}
+
+html.dark .ql-snow .ql-fill {
+    fill: #94a3b8 !important;
+}
+
+html.dark .ql-snow .ql-picker {
+    color: #94a3b8 !important;
+}
+
+html.dark .ql-snow .ql-picker-options {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}

@@ -47,29 +47,19 @@ class SettingController extends Controller
         AppSettingEvote::setValue('app_description', $validated['app_description'] ?? '');
         AppSettingEvote::setValue('active_academic_year', $validated['active_academic_year']);
 
-        $destination = public_path('uploads/settings');
-        if (! file_exists($destination)) {
-            mkdir($destination, 0755, true);
-        }
-
         if ($request->hasFile('app_logo')) {
-            $file = $request->file('app_logo');
-            $filename = 'app_logo_'.time().'.'.$file->getClientOriginalExtension();
-            $file->move($destination, $filename);
-            AppSettingEvote::setValue('app_logo', '/uploads/settings/'.$filename);
+            $path = $request->file('app_logo')->store('settings', 'public');
+            AppSettingEvote::setValue('app_logo', '/storage/'.$path);
         }
 
         if ($request->hasFile('app_favicon')) {
-            $file = $request->file('app_favicon');
-            $extension = $file->getClientOriginalExtension() ?: 'ico';
-            $filename = 'app_favicon_'.time().'.'.$extension;
-            $file->move($destination, $filename);
-            $faviconPath = '/uploads/settings/'.$filename;
+            $path = $request->file('app_favicon')->store('settings', 'public');
+            $faviconPath = '/storage/'.$path;
 
             AppSettingEvote::setValue('app_favicon', $faviconPath);
 
             // Copy to root public/favicon.ico for browser default requests
-            @copy($destination.'/'.$filename, public_path('favicon.ico'));
+            @copy(storage_path('app/public/'.$path), public_path('favicon.ico'));
         }
 
         return back()->with('success', 'Pengaturan aplikasi berhasil disimpan!');

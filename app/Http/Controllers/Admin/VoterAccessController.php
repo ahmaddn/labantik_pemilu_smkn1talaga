@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ElectionEvote;
+use App\Models\Employee;
 use App\Models\StudentAcademicYear;
-use App\Models\User;
 use App\Models\VoterAccessEvote;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -97,9 +97,8 @@ class VoterAccessController extends Controller
 
         // 2. Fetch eligible teacher user_ids
         if (in_array($targetVoter, ['all', 'teacher'], true)) {
-            $teacherUserIds = User::where('role', 'guru')
-                ->where('is_active', true)
-                ->pluck('id')
+            $teacherUserIds = Employee::whereNotNull('user_id')
+                ->pluck('user_id')
                 ->toArray();
             $userIds = array_merge($userIds, $teacherUserIds);
         }

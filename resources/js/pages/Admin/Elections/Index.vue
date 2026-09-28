@@ -203,24 +203,24 @@
                             </div>
 
                             <div
-                                class="flex items-center justify-between gap-2"
+                                class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800"
                             >
                                 <!-- Toggle Publish Button -->
                                 <button
                                     type="button"
                                     @click="togglePublish(election)"
                                     :class="[
-                                        'flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors',
+                                        'flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors',
                                         election.is_published
-                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300'
-                                            : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300',
+                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                            : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300',
                                     ]"
                                 >
                                     <Eye
                                         v-if="election.is_published"
-                                        class="h-3.5 w-3.5"
+                                        class="h-3.5 w-3.5 text-emerald-600"
                                     />
-                                    <EyeOff v-else class="h-3.5 w-3.5" />
+                                    <EyeOff v-else class="h-3.5 w-3.5 text-amber-600" />
                                     <span>{{
                                         election.is_published
                                             ? 'Hasil Dipublikasi'
@@ -231,11 +231,12 @@
                                 <div class="flex items-center gap-1">
                                     <Link
                                         :href="`/admin/pemilihan/${election.id}/hasil`"
-                                        class="rounded-lg p-2 text-slate-500 transition-colors hover:bg-purple-50 hover:text-purple-600 dark:text-slate-400 dark:hover:bg-purple-950/40 dark:hover:text-purple-400"
-                                        title="Visualisasi Hasil & Chart"
+                                        class="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/60"
                                     >
-                                        <BarChart3 class="h-4 w-4" />
+                                        <BarChart3 class="h-3.5 w-3.5" />
+                                        <span>Lihat Hasil</span>
                                     </Link>
+
                                     <Link
                                         :href="`/admin/pemilihan/${election.id}/edit`"
                                         class="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400"
@@ -243,6 +244,7 @@
                                     >
                                         <Edit class="h-4 w-4" />
                                     </Link>
+
                                     <button
                                         type="button"
                                         @click="deleteElection(election)"

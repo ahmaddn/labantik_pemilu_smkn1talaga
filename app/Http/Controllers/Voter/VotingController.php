@@ -64,6 +64,7 @@ class VotingController extends Controller
                 'description' => $election->description,
                 'type' => $election->type,
                 'is_multi_stage' => $election->is_multi_stage,
+                'max_votes_per_voter' => $election->max_votes_per_voter ?? 1,
                 'current_stage' => $election->current_stage,
                 'total_stages' => $election->total_stages,
                 'end_at' => $election->end_at->toIso8601String(),
@@ -86,28 +87,46 @@ class VotingController extends Controller
      */
     public function vote(Request $request, string $electionId): RedirectResponse
     {
-        $request->validate([
-            'candidate_id' => ['required', 'string', 'exists:candidates_evote,id'],
-        ]);
-
-        $userId = auth()->id();
-        $candidateId = $request->input('candidate_id');
-
         $election = ElectionEvote::findOrFail($electionId);
         if ($election->status !== 'ongoing') {
             return back()->withErrors(['vote' => 'Pemilihan sudah berakhir atau belum dimulai.']);
         }
 
+        $maxVotes = $election->max_votes_per_voter ?? 1;
+
+        $validated = $request->validate([
+            'candidate_id' => ['required_without:candidate_ids', 'nullable', 'string', 'exists:candidates_evote,id'],
+            'candidate_ids' => ['required_without:candidate_id', 'nullable', 'array', 'min:1', "max:{$maxVotes}"],
+            'candidate_ids.*' => ['string', 'exists:candidates_evote,id'],
+        ]);
+
+        $userId = auth()->id();
+        $candidateIds = [];
+
+        if (! empty($validated['candidate_ids'])) {
+            $candidateIds = array_unique($validated['candidate_ids']);
+        } elseif (! empty($validated['candidate_id'])) {
+            $candidateIds = [$validated['candidate_id']];
+        }
+
+        if (empty($candidateIds)) {
+            return back()->withErrors(['vote' => 'Silakan pilih setidaknya 1 kandidat.']);
+        }
+
+        if (count($candidateIds) > $maxVotes) {
+            return back()->withErrors(['vote' => "Anda hanya diperbolehkan memilih maksimal {$maxVotes} kandidat."]);
+        }
+
         $currentStage = $election->current_stage;
 
-        // Verify candidate belongs to this election and is qualified
-        $candidate = CandidateEvote::where('id', $candidateId)
+        // Verify all candidates belong to this election and are qualified
+        $validCandidatesCount = CandidateEvote::whereIn('id', $candidateIds)
             ->where('election_id', $electionId)
             ->where('is_qualified', true)
-            ->first();
+            ->count();
 
-        if (! $candidate) {
-            return back()->withErrors(['vote' => 'Kandidat yang dipilih tidak valid atau sudah tereliminasi.']);
+        if ($validCandidatesCount !== count($candidateIds)) {
+            return back()->withErrors(['vote' => 'Satu atau lebih kandidat yang dipilih tidak valid atau sudah tereliminasi.']);
         }
 
         // Ensure voter access record exists for current stage
@@ -132,13 +151,15 @@ class VotingController extends Controller
             return redirect()->route('voter.dashboard')->with('error', "Hak pilih Anda untuk Tahap {$currentStage} ini sudah digunakan.");
         }
 
-        // Insert secret vote into votes_evote (No user_id stored)
-        VoteEvote::create([
-            'election_id' => $electionId,
-            'candidate_id' => $candidateId,
-            'stage_number' => $currentStage,
-            'created_at' => $now,
-        ]);
+        // Insert secret vote(s) into votes_evote (No user_id stored)
+        foreach ($candidateIds as $candId) {
+            VoteEvote::create([
+                'election_id' => $electionId,
+                'candidate_id' => $candId,
+                'stage_number' => $currentStage,
+                'created_at' => $now,
+            ]);
+        }
 
         $stageMsg = $election->is_multi_stage ? " (Tahap {$currentStage})" : '';
 

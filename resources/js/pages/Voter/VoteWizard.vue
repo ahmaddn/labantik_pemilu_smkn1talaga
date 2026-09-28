@@ -48,7 +48,17 @@
                     <span
                         class="text-xs font-bold text-slate-700 dark:text-slate-300"
                     >
-                        Pilih Salah Satu Pasangan Kandidat:
+                        {{
+                            (election.max_votes_per_voter || 1) > 1
+                                ? `Pilih Hingga ${election.max_votes_per_voter} Kandidat (Multi-Choice):`
+                                : 'Pilih Salah Satu Pasangan Kandidat:'
+                        }}
+                    </span>
+                    <span
+                        v-if="(election.max_votes_per_voter || 1) > 1"
+                        class="rounded bg-purple-100 px-2 py-0.5 text-[10px] font-extrabold text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                    >
+                        {{ selectedCandidates.length }} / {{ election.max_votes_per_voter }} Dipilih
                     </span>
                 </div>
 
@@ -102,10 +112,10 @@
                 <div
                     v-for="candidate in paginatedCandidates"
                     :key="candidate.id"
-                    @click="selectedCandidate = candidate"
+                    @click="toggleCandidate(candidate)"
                     :class="[
                         'relative cursor-pointer space-y-3 rounded-2xl border p-4 transition-all',
-                        selectedCandidate?.id === candidate.id
+                        isCandidateSelected(candidate)
                             ? 'border-blue-600 bg-blue-50/80 shadow-sm ring-2 ring-blue-500/40 dark:border-blue-500 dark:bg-blue-950/50'
                             : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800',
                     ]"
@@ -129,13 +139,13 @@
                         <div
                             :class="[
                                 'flex h-6 w-6 items-center justify-center rounded-lg border-2 transition-colors',
-                                selectedCandidate?.id === candidate.id
+                                isCandidateSelected(candidate)
                                     ? 'border-blue-600 bg-blue-600 text-white'
                                     : 'border-slate-300 dark:border-slate-600',
                             ]"
                         >
                             <CheckCircle2
-                                v-if="selectedCandidate?.id === candidate.id"
+                                v-if="isCandidateSelected(candidate)"
                                 class="h-4 w-4"
                             />
                         </div>
@@ -193,7 +203,7 @@
                             class="text-[11px] font-medium text-slate-500 dark:text-slate-400"
                         >
                             {{
-                                selectedCandidate?.id === candidate.id
+                                isCandidateSelected(candidate)
                                     ? 'Sudah Anda pilih'
                                     : 'Klik untuk memilih'
                             }}
@@ -201,13 +211,13 @@
                         <span
                             :class="[
                                 'rounded-lg px-2.5 py-0.5 text-[11px] font-bold',
-                                selectedCandidate?.id === candidate.id
+                                isCandidateSelected(candidate)
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
                             ]"
                         >
                             {{
-                                selectedCandidate?.id === candidate.id
+                                isCandidateSelected(candidate)
                                     ? 'Terpilih'
                                     : 'Pilih'
                             }}
@@ -296,33 +306,22 @@
                     <div
                         class="flex w-full min-w-0 items-center gap-3 sm:w-auto"
                     >
-                        <template v-if="selectedCandidate">
+                        <template v-if="selectedCandidates.length > 0">
                             <div
                                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-base font-bold text-white"
                             >
-                                {{ selectedCandidate.candidate_number }}
+                                {{ selectedCandidates.length }}
                             </div>
                             <div class="truncate">
                                 <div
                                     class="text-[10px] font-bold text-blue-600 uppercase dark:text-blue-400"
                                 >
-                                    Paslon Pilihan:
+                                    {{ selectedCandidates.length }} Paslon Dipilih:
                                 </div>
                                 <div
                                     class="truncate text-xs font-bold text-slate-900 sm:text-sm dark:text-white"
                                 >
-                                    {{ selectedCandidate.chairman_name }}
-                                    <span
-                                        v-if="
-                                            selectedCandidate.vice_chairman_name
-                                        "
-                                        class="text-xs font-normal text-slate-500"
-                                    >
-                                        &
-                                        {{
-                                            selectedCandidate.vice_chairman_name
-                                        }}
-                                    </span>
+                                    {{ selectedCandidates.map(c => `No. ${c.candidate_number}`).join(', ') }}
                                 </div>
                             </div>
                         </template>
@@ -342,7 +341,7 @@
                                 <div
                                     class="text-[11px] text-slate-500 dark:text-slate-400"
                                 >
-                                    Klik salah satu kandidat di atas
+                                    Klik kandidat di atas untuk memilih (maks {{ election.max_votes_per_voter || 1 }})
                                 </div>
                             </div>
                         </template>
@@ -351,20 +350,20 @@
                     <!-- Submit Button -->
                     <button
                         type="button"
-                        :disabled="!selectedCandidate || isSubmitting"
+                        :disabled="selectedCandidates.length === 0 || isSubmitting"
                         @click="showConfirmModal = true"
                         :class="[
                             'flex w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-sm transition-colors sm:w-auto sm:text-sm',
-                            selectedCandidate && !isSubmitting
+                            selectedCandidates.length > 0 && !isSubmitting
                                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                                 : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
                         ]"
                     >
                         <Vote class="h-4 w-4" />
                         <span>{{
-                            selectedCandidate
-                                ? `Kirim Suara (Paslon #${selectedCandidate.candidate_number})`
-                                : 'Pilih Salah Satu Paslon'
+                            selectedCandidates.length > 0
+                                ? `Kirim ${selectedCandidates.length} Suara Pilihan`
+                                : 'Pilih Kandidat'
                         }}</span>
                     </button>
                 </div>
@@ -441,7 +440,7 @@
 
                             <!-- Modal Content -->
                             <div
-                                class="prose prose-xs dark:prose-invert max-w-none flex-1 space-y-2 overflow-y-auto text-xs leading-relaxed text-slate-700 dark:text-slate-300"
+                                class="ql-editor prose prose-xs dark:prose-invert max-w-none flex-1 space-y-2 overflow-y-auto text-xs leading-relaxed text-slate-700 dark:text-slate-300 !p-0"
                                 v-html="activeVisionModal.vision_mission"
                             ></div>
 
@@ -487,6 +486,7 @@ const props = defineProps<{
         description: string;
         type: string;
         is_multi_stage?: boolean;
+        max_votes_per_voter?: number;
         current_stage?: number;
         total_stages?: number;
         end_at: string;
@@ -499,10 +499,29 @@ onMounted(() => {
     isMounted.value = true;
 });
 
-const selectedCandidate = ref<any>(null);
+const selectedCandidates = ref<any[]>([]);
 const showConfirmModal = ref(false);
 const activeVisionModal = ref<any>(null);
 const isSubmitting = ref(false);
+
+const maxVotesAllowed = computed(() => props.election.max_votes_per_voter || 1);
+
+const isCandidateSelected = (cand: any) => {
+    return selectedCandidates.value.some((c) => c.id === cand.id);
+};
+
+const toggleCandidate = (cand: any) => {
+    const exists = isCandidateSelected(cand);
+    if (exists) {
+        selectedCandidates.value = selectedCandidates.value.filter((c) => c.id !== cand.id);
+    } else {
+        if (maxVotesAllowed.value === 1) {
+            selectedCandidates.value = [cand];
+        } else if (selectedCandidates.value.length < maxVotesAllowed.value) {
+            selectedCandidates.value.push(cand);
+        }
+    }
+};
 
 // Search & Pagination Logic
 const searchQuery = ref('');
@@ -546,19 +565,23 @@ const goToPage = (page: number) => {
 };
 
 const confirmMessage = computed(() => {
-    if (!selectedCandidate.value) return '';
-    return `Apakah Anda yakin ingin memilih Pasangan No. ${selectedCandidate.value.candidate_number} (${selectedCandidate.value.chairman_name})? Pilihan tidak dapat diubah setelah Anda menekan tombol simpan.`;
+    if (selectedCandidates.value.length === 0) return '';
+    const names = selectedCandidates.value
+        .map((c) => `No. ${c.candidate_number} (${c.chairman_name})`)
+        .join(', ');
+    return `Apakah Anda yakin ingin memberikan suara kepada ${selectedCandidates.value.length} paslon pilihan: ${names}? Pilihan tidak dapat diubah setelah disimpan.`;
 });
 
 const submitVote = () => {
-    if (!selectedCandidate.value || isSubmitting.value) return;
+    if (selectedCandidates.value.length === 0 || isSubmitting.value) return;
 
     isSubmitting.value = true;
 
     router.post(
         `/vote/${props.election.id}`,
         {
-            candidate_id: selectedCandidate.value.id,
+            candidate_ids: selectedCandidates.value.map((c) => c.id),
+            candidate_id: selectedCandidates.value[0]?.id,
         },
         {
             onFinish: () => {

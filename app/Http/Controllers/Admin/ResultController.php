@@ -9,6 +9,7 @@ use App\Models\VoteEvote;
 use App\Models\VoterAccessEvote;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -96,65 +97,106 @@ class ResultController extends Controller
     }
 
     /**
-     * Automatically advance to next stage by promoting Top N candidates based on real vote count.
+     * Automatically advance to next stage by promoting Top N candidates based on real vote count or manual candidate selection.
      */
     public function advanceStage(Request $request, string $electionId): RedirectResponse
     {
         $election = ElectionEvote::findOrFail($electionId);
 
         $validated = $request->validate([
-            'qualifiers_count' => ['required', 'integer', 'min:1'],
+            'mode' => ['nullable', 'in:auto,manual'],
+            'qualifiers_count' => ['required_if:mode,auto', 'nullable', 'integer', 'min:1'],
+            'selected_candidate_ids' => ['required_if:mode,manual', 'nullable', 'array'],
+            'selected_candidate_ids.*' => ['string', 'exists:candidates_evote,id'],
+            'schedule_option' => ['nullable', 'in:now,custom'],
+            'start_at' => ['required_if:schedule_option,custom', 'nullable', 'date'],
+            'end_at' => ['nullable', 'date'],
         ]);
 
-        $qualifiersCount = (int) $validated['qualifiers_count'];
+        $mode = $validated['mode'] ?? 'auto';
         $currentStage = $election->current_stage;
 
-        // Get all active qualified candidates
+        if ($currentStage >= $election->total_stages) {
+            return back()->with('error', "Pemilihan ini telah mencapai tahap akhir (Tahap {$election->total_stages}). Tidak dapat melanjutkan ke tahap berikutnya.");
+        }
+
         $activeCandidates = CandidateEvote::where('election_id', $electionId)
             ->where('is_qualified', true)
             ->get();
 
-        if ($activeCandidates->count() <= $qualifiersCount) {
-            return back()->with('error', "Jumlah kandidat aktif ({$activeCandidates->count()}) tidak lebih dari kuota target ({$qualifiersCount}). Tidak dapat melanjutkan penyaringan.");
+        if ($mode === 'manual' && ! empty($validated['selected_candidate_ids'])) {
+            $selectedIds = $validated['selected_candidate_ids'];
+            $qualifiersCount = count($selectedIds);
+
+            foreach ($activeCandidates as $cand) {
+                if (in_array($cand->id, $selectedIds, true)) {
+                    $cand->is_qualified = true;
+                } else {
+                    $cand->is_qualified = false;
+                    $cand->eliminated_at_stage = $currentStage;
+                }
+                $cand->save();
+            }
+        } else {
+            $qualifiersCount = (int) ($validated['qualifiers_count'] ?? 1);
+            if ($activeCandidates->count() <= $qualifiersCount) {
+                return back()->with('error', "Jumlah kandidat aktif ({$activeCandidates->count()}) tidak lebih dari kuota target ({$qualifiersCount}). Tidak dapat melanjutkan penyaringan.");
+            }
+
+            // Count votes per active candidate in current stage
+            $votesMap = VoteEvote::where('election_id', $electionId)
+                ->where('stage_number', $currentStage)
+                ->selectRaw('candidate_id, count(*) as count')
+                ->groupBy('candidate_id')
+                ->pluck('count', 'candidate_id');
+
+            // Sort active candidates descending by real votes
+            $sortedCandidates = $activeCandidates->sortByDesc(function ($candidate) use ($votesMap) {
+                return (int) ($votesMap[$candidate->id] ?? 0);
+            })->values();
+
+            // Promote Top N and eliminate the rest
+            $qualifiers = $sortedCandidates->take($qualifiersCount);
+            $eliminated = $sortedCandidates->slice($qualifiersCount);
+
+            foreach ($qualifiers as $cand) {
+                $cand->is_qualified = true;
+                $cand->save();
+            }
+
+            foreach ($eliminated as $cand) {
+                $cand->is_qualified = false;
+                $cand->eliminated_at_stage = $currentStage;
+                $cand->save();
+            }
         }
 
-        // Count votes per active candidate in current stage
-        $votesMap = VoteEvote::where('election_id', $electionId)
-            ->where('stage_number', $currentStage)
-            ->selectRaw('candidate_id, count(*) as count')
-            ->groupBy('candidate_id')
-            ->pluck('count', 'candidate_id');
-
-        // Sort active candidates descending by real votes
-        $sortedCandidates = $activeCandidates->sortByDesc(function ($candidate) use ($votesMap) {
-            return (int) ($votesMap[$candidate->id] ?? 0);
-        })->values();
-
-        // Promote Top N and eliminate the rest
-        $qualifiers = $sortedCandidates->take($qualifiersCount);
-        $eliminated = $sortedCandidates->slice($qualifiersCount);
-
-        foreach ($qualifiers as $cand) {
-            $cand->is_qualified = true;
-            $cand->save();
-        }
-
-        foreach ($eliminated as $cand) {
-            $cand->is_qualified = false;
-            $cand->eliminated_at_stage = $currentStage;
-            $cand->save();
-        }
-
-        // Advance stage
+        // Advance stage & update scheduling if specified
         $nextStage = $currentStage + 1;
         $election->current_stage = $nextStage;
         if ($nextStage > $election->total_stages) {
             $election->total_stages = $nextStage;
         }
+
+        $scheduleOption = $validated['schedule_option'] ?? 'now';
+        if ($scheduleOption === 'now') {
+            $election->start_at = now();
+            if (! empty($validated['end_at'])) {
+                $election->end_at = Carbon::parse($validated['end_at']);
+            }
+        } else {
+            if (! empty($validated['start_at'])) {
+                $election->start_at = Carbon::parse($validated['start_at']);
+            }
+            if (! empty($validated['end_at'])) {
+                $election->end_at = Carbon::parse($validated['end_at']);
+            }
+        }
+
         $election->save();
 
         return redirect("/admin/pemilihan/{$electionId}/hasil?stage={$nextStage}")
-            ->with('success', "Berhasil menyaring Top {$qualifiersCount} kandidat berdasarkan perolehan suara! Tahap {$nextStage} resmi dimulai.");
+            ->with('success', "Berhasil menyaring {$qualifiersCount} kandidat ke Tahap {$nextStage} dan memperbarui jadwal waktu!");
     }
 
     /**

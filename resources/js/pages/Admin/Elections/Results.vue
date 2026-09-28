@@ -116,8 +116,9 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <!-- Advance Stage Button -->
+                    <!-- Advance Stage Button (Only if not final stage) -->
                     <button
+                        v-if="election.current_stage < election.total_stages"
                         type="button"
                         @click="showAdvanceModal = true"
                         class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-purple-700"
@@ -125,6 +126,13 @@
                         <Filter class="h-4 w-4" />
                         <span>Saring Top Paslon & Lanjutkan Tahap</span>
                     </button>
+                    <span
+                        v-else
+                        class="inline-flex items-center gap-1 rounded-xl bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    >
+                        <CheckCircle2 class="h-4 w-4 text-emerald-600" />
+                        <span>Tahap Akhir (Selesai)</span>
+                    </span>
 
                     <!-- Reset Stages Button -->
                     <button
@@ -498,7 +506,37 @@
                                 </div>
                             </div>
 
+                            <!-- Mode Selection Tabs -->
+                            <div class="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+                                <button
+                                    type="button"
+                                    @click="advanceMode = 'auto'"
+                                    :class="[
+                                        'flex-1 cursor-pointer rounded-lg py-1.5 text-xs font-bold transition-all',
+                                        advanceMode === 'auto'
+                                            ? 'bg-white text-purple-700 shadow-sm dark:bg-slate-700 dark:text-purple-300'
+                                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
+                                    ]"
+                                >
+                                    Otomatis (Perolehan Suara)
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="advanceMode = 'manual'"
+                                    :class="[
+                                        'flex-1 cursor-pointer rounded-lg py-1.5 text-xs font-bold transition-all',
+                                        advanceMode === 'manual'
+                                            ? 'bg-white text-purple-700 shadow-sm dark:bg-slate-700 dark:text-purple-300'
+                                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
+                                    ]"
+                                >
+                                    Pilih Manual Paslon
+                                </button>
+                            </div>
+
+                            <!-- Auto Mode: Kuota Ranking Suara -->
                             <div
+                                v-if="advanceMode === 'auto'"
                                 class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-700 dark:bg-slate-800/60"
                             >
                                 <label
@@ -512,140 +550,245 @@
                                         v-model.number="qualifiersCount"
                                         type="number"
                                         min="1"
-                                        :max="activeQualifiedCount - 1"
+                                        :max="activeQualifiedCount > 1 ? activeQualifiedCount - 1 : 1"
                                         class="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                     />
                                     <span
                                         class="shrink-0 font-bold text-slate-500"
-                                        >dari {{ activeQualifiedCount }} Paslon
-                                        Aktif</span
+                                        >dari {{ activeQualifiedCount }} Paslon Aktif</span
                                     >
                                 </div>
                                 <p
                                     class="text-[11px] text-purple-600 dark:text-purple-400"
                                 >
-                                    Contoh: Ketik <strong>8</strong> untuk
-                                    menyaring Top 8, atau
-                                    <strong>4</strong> untuk menyaring Top 4
-                                    Finalis.
+                                    Ketik berapa saja kuota paslon yang Anda inginkan (misal <strong>10</strong>, <strong>8</strong>, atau <strong>4</strong>).
                                 </p>
                             </div>
 
+                            <!-- Manual Mode: Checkbox Paslon -->
                             <div
-                                class="flex items-center justify-end gap-2 border-t border-slate-100 pt-2 dark:border-slate-800"
+                                v-else
+                                class="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800/60"
                             >
-                                <button
-                                    type="button"
-                                    @click="showAdvanceModal = false"
-                                    class="cursor-pointer rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                <p class="font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                    Centang Paslon yang Berhak Lolos Ke Tahap {{ election.current_stage + 1 }}:
+                                </p>
+                                <div
+                                    v-for="cand in results.filter(c => c.is_qualified !== false)"
+                                    :key="cand.id"
+                                    class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900"
                                 >
-                                    Batal
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="submitAdvanceStage"
-                                    class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-purple-700"
-                                >
-                                    <Filter class="h-4 w-4" />
-                                    <span
-                                        >Proses Eliminasi Top
-                                        {{ qualifiersCount }}</span
-                                    >
-                                </button>
+                                    <input
+                                        type="checkbox"
+                                        :id="`cand-${cand.id}`"
+                                        :value="cand.id"
+                                        v-model="selectedCandidateIds"
+                                        class="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <label :for="`cand-${cand.id}`" class="flex flex-1 items-center justify-between cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-200">
+                                        <span>No. {{ cand.candidate_number }} - {{ cand.chairman_name }}</span>
+                                        <span class="text-purple-600 dark:text-purple-400 font-extrabold">{{ cand.votes_count }} Suara</span>
+                                    </label>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </Transition>
-            </Teleport>
 
-            <!-- Reset Stages Modal Confirmation -->
-            <ConfirmModal
-                :show="showResetModal"
-                title="Reset Ulang Semua Tahap"
-                message="Apakah Anda yakin ingin memulihkan tahap ke Tahap 1? Semua status eliminasi kandidat akan dikembalikan menjadi aktif."
-                type="danger"
-                confirm-text="Ya, Reset Ke Tahap 1"
-                cancel-text="Batal"
-                @confirm="submitResetStages"
-                @cancel="showResetModal = false"
-            />
-        </div>
-    </AdminLayout>
-</template>
+                             <!-- Schedule Options Section -->
+                             <div class="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs dark:border-slate-700 dark:bg-slate-800/60">
+                                 <div class="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                                     <Calendar class="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                     <span>Jadwal Waktu Tahap {{ election.current_stage + 1 }}</span>
+                                 </div>
 
-<script setup lang="ts">
-import { ref } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
-import {
-    ArrowLeft,
-    Vote,
-    Users,
-    TrendingUp,
-    Trophy,
-    BarChart3,
-    Eye,
-    EyeOff,
-    Printer,
-    Filter,
-    RotateCcw,
-} from '@lucide/vue';
-import AdminLayout from '@/Layouts/AdminLayout.vue';
-import ConfirmModal from '@/Components/ConfirmModal.vue';
+                                 <div class="grid grid-cols-2 gap-2">
+                                     <label
+                                         :class="[
+                                             'flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 transition-all',
+                                             scheduleOption === 'now'
+                                                 ? 'border-purple-500 bg-purple-50/70 text-purple-900 dark:border-purple-500 dark:bg-purple-950/60 dark:text-white'
+                                                 : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                                         ]"
+                                     >
+                                         <input
+                                             type="radio"
+                                             value="now"
+                                             v-model="scheduleOption"
+                                             class="h-3.5 w-3.5 text-purple-600 focus:ring-purple-500"
+                                         />
+                                         <span class="font-bold">Mulai Sekarang (Detik Ini)</span>
+                                     </label>
 
-const props = defineProps<{
-    election: {
-        id: number;
-        title: string;
-        description: string | null;
-        type: string;
-        target_voter: string;
-        academic_year: string | null;
-        start_at: string;
-        end_at: string;
-        is_published: boolean;
-        is_multi_stage: boolean;
-        current_stage: number;
-        total_stages: number;
-        status: string;
-        total_votes: number;
-        total_voters: number;
-        turnout_percentage: number;
-    };
-    selectedStage: number;
-    activeQualifiedCount: number;
-    results: any[];
-    leadingCandidate: any | null;
-}>();
+                                     <label
+                                         :class="[
+                                             'flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 transition-all',
+                                             scheduleOption === 'custom'
+                                                 ? 'border-purple-500 bg-purple-50/70 text-purple-900 dark:border-purple-500 dark:bg-purple-950/60 dark:text-white'
+                                                 : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                                         ]"
+                                     >
+                                         <input
+                                             type="radio"
+                                             value="custom"
+                                             v-model="scheduleOption"
+                                             class="h-3.5 w-3.5 text-purple-600 focus:ring-purple-500"
+                                         />
+                                         <span class="font-bold">Pilih Tanggal Mulai</span>
+                                     </label>
+                                 </div>
 
-const showAdvanceModal = ref(false);
-const showResetModal = ref(false);
-const qualifiersCount = ref(
-    props.activeQualifiedCount > 8 ? 8 : props.activeQualifiedCount > 4 ? 4 : 2,
-);
+                                 <!-- Custom Start Time Input -->
+                                 <div v-if="scheduleOption === 'custom'" class="space-y-1 pt-1">
+                                     <label class="block font-bold text-slate-700 dark:text-slate-300">
+                                         Waktu Mulai Tahap {{ election.current_stage + 1 }}:
+                                     </label>
+                                     <input
+                                         type="datetime-local"
+                                         v-model="nextStartAt"
+                                         class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                     />
+                                 </div>
 
-const changeStage = (stageNum: number) => {
-    router.get(
-        `/admin/pemilihan/${props.election.id}/hasil`,
-        { stage: stageNum },
-        { preserveState: true },
-    );
-};
+                                 <!-- Optional End Time Input -->
+                                 <div class="space-y-1 pt-1">
+                                     <label class="block font-bold text-slate-700 dark:text-slate-300">
+                                         Waktu Selesai Tahap {{ election.current_stage + 1 }} (Opsional / Perbarui):
+                                     </label>
+                                     <input
+                                         type="datetime-local"
+                                         v-model="nextEndAt"
+                                         class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                     />
+                                 </div>
+                             </div>
 
-const togglePublish = () => {
-    router.post(`/admin/pemilihan/${props.election.id}/toggle-publish`);
-};
+                             <div
+                                 class="flex items-center justify-end gap-2 border-t border-slate-100 pt-2 dark:border-slate-800"
+                             >
+                                 <button
+                                     type="button"
+                                     @click="showAdvanceModal = false"
+                                     class="cursor-pointer rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                 >
+                                     Batal
+                                 </button>
+                                 <button
+                                     type="button"
+                                     @click="submitAdvanceStage"
+                                     class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-purple-700"
+                                 >
+                                     <Filter class="h-4 w-4" />
+                                     <span>Proses Lanjut Tahap {{ election.current_stage + 1 }}</span>
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                 </Transition>
+             </Teleport>
 
-const submitAdvanceStage = () => {
-    router.post(
-        `/admin/pemilihan/${props.election.id}/advance-stage`,
-        { qualifiers_count: qualifiersCount.value },
-        {
-            onFinish: () => {
-                showAdvanceModal.value = false;
-            },
-        },
-    );
-};
+             <!-- Reset Stages Modal Confirmation -->
+             <ConfirmModal
+                 :show="showResetModal"
+                 title="Reset Ulang Semua Tahap"
+                 message="Apakah Anda yakin ingin memulihkan tahap ke Tahap 1? Semua status eliminasi kandidat akan dikembalikan menjadi aktif."
+                 type="danger"
+                 confirm-text="Ya, Reset Ke Tahap 1"
+                 cancel-text="Batal"
+                 @confirm="submitResetStages"
+                 @cancel="showResetModal = false"
+             />
+         </div>
+     </AdminLayout>
+ </template>
+
+ <script setup lang="ts">
+ import { ref } from 'vue';
+ import { router, Link } from '@inertiajs/vue3';
+ import {
+     ArrowLeft,
+     Vote,
+     Users,
+     TrendingUp,
+     Trophy,
+     BarChart3,
+     Eye,
+     EyeOff,
+     CheckCircle2,
+     Printer,
+     Filter,
+     RotateCcw,
+     Calendar,
+     Clock,
+ } from '@lucide/vue';
+ import AdminLayout from '@/Layouts/AdminLayout.vue';
+ import ConfirmModal from '@/Components/ConfirmModal.vue';
+
+ const props = defineProps<{
+     election: {
+         id: number;
+         title: string;
+         description: string | null;
+         type: string;
+         target_voter: string;
+         academic_year: string | null;
+         start_at: string;
+         end_at: string;
+         is_published: boolean;
+         is_multi_stage: boolean;
+         current_stage: number;
+         total_stages: number;
+         status: string;
+         total_votes: number;
+         total_voters: number;
+         turnout_percentage: number;
+     };
+     selectedStage: number;
+     activeQualifiedCount: number;
+     results: any[];
+     leadingCandidate: any | null;
+ }>();
+
+ const showAdvanceModal = ref(false);
+ const showResetModal = ref(false);
+ const advanceMode = ref<'auto' | 'manual'>('auto');
+ const qualifiersCount = ref(
+     props.activeQualifiedCount > 8 ? 8 : props.activeQualifiedCount > 4 ? 4 : 2,
+ );
+ const selectedCandidateIds = ref<string[]>(
+     props.results.filter((c) => c.is_qualified !== false).map((c) => c.id),
+ );
+ const scheduleOption = ref<'now' | 'custom'>('now');
+ const nextStartAt = ref<string>('');
+ const nextEndAt = ref<string>('');
+
+ const changeStage = (stageNum: number) => {
+     router.get(
+         `/admin/pemilihan/${props.election.id}/hasil`,
+         { stage: stageNum },
+         { preserveState: true },
+     );
+ };
+
+ const togglePublish = () => {
+     router.post(`/admin/pemilihan/${props.election.id}/toggle-publish`);
+ };
+
+ const submitAdvanceStage = () => {
+     router.post(
+         `/admin/pemilihan/${props.election.id}/advance-stage`,
+         {
+             mode: advanceMode.value,
+             qualifiers_count: qualifiersCount.value,
+             selected_candidate_ids: selectedCandidateIds.value,
+             schedule_option: scheduleOption.value,
+             start_at: nextStartAt.value,
+             end_at: nextEndAt.value,
+         },
+         {
+             onFinish: () => {
+                 showAdvanceModal.value = false;
+             },
+         },
+     );
+ };
 
 const confirmResetStages = () => {
     showResetModal.value = true;

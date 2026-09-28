@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('academic_year', 10)->nullable();
             $table->char('class_id', 36)->nullable();
             $table->dateTime('start_at');
-            $table->dateTime('end_at');                                     
+            $table->dateTime('end_at');
             $table->boolean('is_published')->default(false);
             $table->timestamps();
 

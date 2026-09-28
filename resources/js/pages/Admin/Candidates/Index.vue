@@ -115,7 +115,7 @@
                                 >Visi & Misi:</span
                             >
                             <div
-                                class="prose prose-xs dark:prose-invert line-clamp-4 max-w-none text-xs leading-relaxed"
+                                class="ql-editor prose prose-xs dark:prose-invert line-clamp-4 max-w-none text-xs leading-relaxed !p-0"
                                 v-html="candidate.vision_mission"
                             ></div>
                         </div>

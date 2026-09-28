@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CandidateController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ElectionController;
+use App\Http\Controllers\Admin\GuideController;
 use App\Http\Controllers\Admin\ResultController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\VoterAccessController;
@@ -64,5 +65,8 @@ Route::middleware('auth')->group(function () {
         // Application Settings
         Route::get('/pengaturan', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/pengaturan', [SettingController::class, 'update'])->name('settings.update');
+
+        // Committee Guide
+        Route::get('/panduan', [GuideController::class, 'index'])->name('guide.index');
     });
 });

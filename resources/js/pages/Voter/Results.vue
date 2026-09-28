@@ -14,29 +14,29 @@
 
             <!-- Header Banner -->
             <div
-                class="space-y-2 rounded-2xl bg-slate-900 p-4 text-white shadow-sm"
+                class="space-y-2 rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-white"
             >
                 <div
-                    class="flex items-center gap-2 text-xs font-bold tracking-wider text-amber-400 uppercase"
+                    class="flex items-center gap-2 text-xs font-bold tracking-wider text-amber-600 uppercase dark:text-amber-400"
                 >
                     <BarChart3 class="h-4 w-4" />
                     <span>Hasil Perolehan Suara Resmi</span>
                 </div>
-                <h2 class="text-base leading-snug font-extrabold">
+                <h2 class="text-base leading-snug font-extrabold text-slate-900 dark:text-white">
                     {{ election.title }}
                 </h2>
                 <div
-                    class="flex items-center gap-4 border-t border-slate-800 pt-1 text-xs text-slate-300"
+                    class="flex items-center gap-4 border-t border-slate-100 pt-2 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300"
                 >
                     <span
                         >Total Suara:
-                        <strong class="text-white">{{
+                        <strong class="font-extrabold text-slate-900 dark:text-white">{{
                             election.total_votes
                         }}</strong></span
                     >
                     <span
                         >Hak Pemilih:
-                        <strong class="text-white">{{
+                        <strong class="font-extrabold text-slate-900 dark:text-white">{{
                             election.total_voters
                         }}</strong></span
                     >

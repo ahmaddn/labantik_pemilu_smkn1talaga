@@ -33,6 +33,7 @@ class ElectionController extends Controller
                     'end_at' => $election->end_at->toIso8601String(),
                     'is_published' => $election->is_published,
                     'is_multi_stage' => $election->is_multi_stage,
+                    'max_votes_per_voter' => $election->max_votes_per_voter ?? 1,
                     'current_stage' => $election->current_stage,
                     'total_stages' => $election->total_stages,
                     'status' => $election->status,
@@ -87,12 +88,14 @@ class ElectionController extends Controller
             'start_at' => ['required', 'date'],
             'end_at' => ['required', 'date', 'after:start_at'],
             'is_multi_stage' => ['boolean'],
+            'max_votes_per_voter' => ['nullable', 'integer', 'min:1', 'max:20'],
             'total_stages' => ['nullable', 'integer', 'min:1', 'max:5'],
             'stage_schedules' => ['nullable', 'array'],
         ]);
 
         $validated['created_by'] = auth()->id();
         $validated['is_multi_stage'] = $request->boolean('is_multi_stage');
+        $validated['max_votes_per_voter'] = (int) ($validated['max_votes_per_voter'] ?? 1);
         $validated['total_stages'] = $validated['is_multi_stage'] ? ($validated['total_stages'] ?? 2) : 1;
         $validated['current_stage'] = 1;
 
@@ -125,6 +128,7 @@ class ElectionController extends Controller
                 'start_at' => $election->start_at ? $election->start_at->format('Y-m-d\TH:i') : '',
                 'end_at' => $election->end_at ? $election->end_at->format('Y-m-d\TH:i') : '',
                 'is_multi_stage' => $election->is_multi_stage,
+                'max_votes_per_voter' => $election->max_votes_per_voter ?? 1,
                 'current_stage' => $election->current_stage,
                 'total_stages' => $election->total_stages,
                 'stage_schedules' => $election->stage_schedules ?? [],
@@ -148,11 +152,13 @@ class ElectionController extends Controller
             'start_at' => ['required', 'date'],
             'end_at' => ['required', 'date', 'after:start_at'],
             'is_multi_stage' => ['boolean'],
+            'max_votes_per_voter' => ['nullable', 'integer', 'min:1', 'max:20'],
             'total_stages' => ['nullable', 'integer', 'min:1', 'max:5'],
             'stage_schedules' => ['nullable', 'array'],
         ]);
 
         $validated['is_multi_stage'] = $request->boolean('is_multi_stage');
+        $validated['max_votes_per_voter'] = (int) ($validated['max_votes_per_voter'] ?? 1);
         if ($validated['is_multi_stage']) {
             $validated['total_stages'] = $validated['total_stages'] ?? 2;
         } else {

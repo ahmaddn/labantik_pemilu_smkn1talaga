@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ElectionEvote;
+use App\Models\Employee;
 use App\Models\Student;
-use App\Models\User;
 use App\Models\VoteEvote;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,7 +16,7 @@ class DashboardController extends Controller
     {
         $totalElections = ElectionEvote::count();
         $totalStudents = Student::count();
-        $totalTeachers = User::where('role', 'guru')->count();
+        $totalTeachers = Employee::count();
         $totalVotesCast = VoteEvote::count();
 
         $recentElections = ElectionEvote::withCount(['candidates', 'voterAccesses', 'votes'])

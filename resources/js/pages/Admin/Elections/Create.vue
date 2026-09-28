@@ -94,9 +94,9 @@
                                 <option value="all">
                                     Semua Pengguna (Siswa & Guru)
                                 </option>
-                                <option value="student">Siswa Sahaja</option>
+                                <option value="student">Siswa Saja</option>
                                 <option value="teacher">
-                                    Guru / Staf Sahaja
+                                    Guru / Staf Saja
                                 </option>
                             </select>
                         </div>
@@ -254,6 +254,31 @@
                         </div>
                     </div>
 
+                    <!-- Jumlah Suara per Pemilih (Multi-Choice) Option -->
+                    <div
+                        class="space-y-2 rounded-xl border border-purple-200/70 bg-purple-50/60 p-4 dark:border-purple-900/60 dark:bg-purple-950/40"
+                    >
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <span
+                                    class="block text-xs font-bold text-slate-900 dark:text-white"
+                                    >Jumlah Maksimal Suara Diberikan per Pemilih (Pilihan Ganda / Multi-Choice)</span
+                                >
+                                <span
+                                    class="block text-[11px] text-slate-500 dark:text-slate-400"
+                                    >Isi <strong>1</strong> untuk memilih 1 paslon saja, atau ketik <strong>4</strong> (atau angka lainnya) jika 1 pemilih boleh mencoblos hingga N kandidat sekaligus.</span
+                                >
+                            </div>
+                            <input
+                                v-model.number="form.max_votes_per_voter"
+                                type="number"
+                                min="1"
+                                max="20"
+                                class="w-24 rounded-lg border border-purple-300 bg-white p-2 text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800 dark:bg-slate-900 dark:text-white"
+                            />
+                        </div>
+                    </div>
+
                     <!-- Submit Bar -->
                     <div
                         class="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700"
@@ -271,8 +296,8 @@
                         >
                             {{
                                 form.processing
-                                    ? 'Menyimpan...'
-                                    : 'Simpan Pemilihan'
+                                    ? "Menyimpan..."
+                                    : "Simpan Pemilihan"
                             }}
                         </button>
                     </div>
@@ -283,9 +308,9 @@
 </template>
 
 <script setup lang="ts">
-import { useForm, Link } from '@inertiajs/vue3';
-import { ArrowLeft } from '@lucide/vue';
-import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { useForm, Link } from "@inertiajs/vue3";
+import { ArrowLeft } from "@lucide/vue";
+import AdminLayout from "@/Layouts/AdminLayout.vue";
 
 defineProps<{
     academicYears: string[];
@@ -293,19 +318,20 @@ defineProps<{
 }>();
 
 const form = useForm({
-    title: '',
-    description: '',
-    type: 'osis',
-    target_voter: 'all',
-    academic_year: '',
-    class_id: '',
-    start_at: '',
-    end_at: '',
+    title: "",
+    description: "",
+    type: "osis",
+    target_voter: "all",
+    academic_year: "",
+    class_id: "",
+    start_at: "",
+    end_at: "",
     is_multi_stage: false,
+    max_votes_per_voter: 1,
     total_stages: 2,
 });
 
 const submit = () => {
-    form.post('/admin/pemilihan');
+    form.post("/admin/pemilihan");
 };
 </script>

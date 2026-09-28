@@ -91,16 +91,8 @@ class CandidateController extends Controller
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $file = $request->file('photo');
-            $filename = time().'_'.$file->getClientOriginalName();
-            $destination = public_path('uploads/candidates');
-
-            if (! file_exists($destination)) {
-                mkdir($destination, 0755, true);
-            }
-
-            $file->move($destination, $filename);
-            $photoPath = '/uploads/candidates/'.$filename;
+            $path = $request->file('photo')->store('candidates', 'public');
+            $photoPath = '/storage/'.$path;
         }
 
         CandidateEvote::create([
@@ -151,16 +143,8 @@ class CandidateController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            $file = $request->file('photo');
-            $filename = time().'_'.$file->getClientOriginalName();
-            $destination = public_path('uploads/candidates');
-
-            if (! file_exists($destination)) {
-                mkdir($destination, 0755, true);
-            }
-
-            $file->move($destination, $filename);
-            $candidate->photo = '/uploads/candidates/'.$filename;
+            $path = $request->file('photo')->store('candidates', 'public');
+            $candidate->photo = '/storage/'.$path;
         }
 
         $candidate->candidate_number = $validated['candidate_number'];

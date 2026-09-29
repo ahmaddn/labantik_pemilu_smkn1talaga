@@ -66,8 +66,14 @@ class DashboardController extends Controller
             } else {
                 $userSubtext = 'NIS: '.$user->student->student_number;
             }
-        } elseif ($user->isTeacher() && $user->employee) {
-            $userSubtext = 'NIP: '.($user->employee->nip ?? '-');
+        } elseif ($user->isTeacher()) {
+            if ($user->employee && ! empty($user->employee->nip)) {
+                $userSubtext = 'NIP: '.$user->employee->nip;
+            } elseif ($user->email) {
+                $userSubtext = 'Email: '.$user->email;
+            } else {
+                $userSubtext = 'Guru / Staf SMKN 1 Talaga';
+            }
         }
 
         return Inertia::render('Voter/Dashboard', [

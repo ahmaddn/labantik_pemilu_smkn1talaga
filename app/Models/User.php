@@ -92,12 +92,14 @@ class User extends Authenticatable
      */
     public function getRoleAttribute(): string
     {
-        if (isset($this->attributes['role']) && ! empty($this->attributes['role'])) {
-            return $this->attributes['role'];
+        $email = strtolower((string) $this->email);
+        if ($email === 'superadmin@smkn1talaga.sch.id' || str_contains($email, 'admin')) {
+            return 'superadmin';
         }
 
-        if ($this->email === 'superadmin@smkn1talaga.sch.id' || str_contains(strtolower((string) $this->email), 'admin')) {
-            return 'superadmin';
+        $rawRole = strtolower($this->attributes['role'] ?? '');
+        if (in_array($rawRole, ['superadmin', 'admin', 'panitia'], true)) {
+            return $rawRole;
         }
 
         try {
@@ -118,15 +120,47 @@ class User extends Authenticatable
             // Fallback if table query fails
         }
 
-        if ($this->student()->exists()) {
-            return 'siswa';
-        }
-
+        // Check if employee record exists or if user has teacher role in assoc_user_roles
         if ($this->employee()->exists()) {
             return 'guru';
         }
 
-        return 'superadmin';
+        try {
+            $hasTeacherRole = DB::table('assoc_user_roles')
+                ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
+                ->where('assoc_user_roles.user_id', $this->id)
+                ->where(function ($query) {
+                    $query->where('core_roles.name', 'LIKE', '%Guru%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Wali Kelas%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kurikulum%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kepala Sekolah%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kesiswaan%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Tenaga Kependidikan%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Pembina%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kaprog%');
+                })
+                ->exists();
+
+            if ($hasTeacherRole) {
+                return 'guru';
+            }
+        } catch (\Throwable $e) {
+            // Fallback if table query fails
+        }
+
+        if ($rawRole === 'guru') {
+            return 'guru';
+        }
+
+        if ($this->student()->exists()) {
+            return 'siswa';
+        }
+
+        if (! empty($rawRole)) {
+            return $rawRole;
+        }
+
+        return 'siswa';
     }
 
     /**

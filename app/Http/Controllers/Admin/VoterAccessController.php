@@ -29,8 +29,10 @@ class VoterAccessController extends Controller
 
                 if ($user && $user->isStudent() && $user->student) {
                     $subtext = 'NIS: '.$user->student->student_number;
-                } elseif ($user && $user->isTeacher() && $user->employee) {
-                    $subtext = 'NIP: '.($user->employee->nip ?? '-');
+                } elseif ($user && $user->isTeacher()) {
+                    $subtext = ($user->employee && ! empty($user->employee->nip))
+                        ? 'NIP: '.$user->employee->nip
+                        : ($user->email ? 'Email: '.$user->email : 'Guru / Staf');
                 }
 
                 return [
@@ -95,11 +97,33 @@ class VoterAccessController extends Controller
             $userIds = array_merge($userIds, $studentUserIds);
         }
 
-        // 2. Fetch eligible teacher user_ids
+        // 2. Fetch eligible teacher user_ids (from core_employees, assoc_user_roles, and core_users role = 'guru')
         if (in_array($targetVoter, ['all', 'teacher'], true)) {
-            $teacherUserIds = Employee::whereNotNull('user_id')
+            $teacherUserIdsEmp = Employee::whereNotNull('user_id')
                 ->pluck('user_id')
                 ->toArray();
+
+            $teacherUserIdsAssoc = DB::table('assoc_user_roles')
+                ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
+                ->where(function ($query) {
+                    $query->where('core_roles.name', 'LIKE', '%Guru%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Wali Kelas%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kurikulum%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kepala Sekolah%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kesiswaan%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Tenaga Kependidikan%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Pembina%')
+                        ->orWhere('core_roles.name', 'LIKE', '%Kaprog%');
+                })
+                ->pluck('assoc_user_roles.user_id')
+                ->toArray();
+
+            $teacherUserIdsRole = DB::table('core_users')
+                ->where('role', 'guru')
+                ->pluck('id')
+                ->toArray();
+
+            $teacherUserIds = array_unique(array_merge($teacherUserIdsEmp, $teacherUserIdsAssoc, $teacherUserIdsRole));
             $userIds = array_merge($userIds, $teacherUserIds);
         }
 

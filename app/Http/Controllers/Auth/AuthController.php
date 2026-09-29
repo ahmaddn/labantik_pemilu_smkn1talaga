@@ -85,9 +85,11 @@ class AuthController extends Controller
             }
         }
 
-        // 3. If still not found, try finding by email
+        // 3. If still not found, try finding by email or name
         if (! $user) {
-            $user = User::where('email', $identifier)->first();
+            $user = User::where('email', $identifier)
+                ->orWhere('name', $identifier)
+                ->first();
         }
 
         // Validate user existence and password

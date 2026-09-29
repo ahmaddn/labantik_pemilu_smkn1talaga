@@ -7,6 +7,7 @@ use App\Models\CandidateEvote;
 use App\Models\ElectionEvote;
 use App\Models\Employee;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,13 +17,28 @@ class CandidateController extends Controller
 {
     private function getPeopleList(): array
     {
+        $employeeNames = [];
         $employees = Employee::select('full_name', 'nip')
             ->orderBy('full_name')
             ->get()
-            ->map(fn ($e) => [
-                'name' => $e->full_name,
+            ->map(function ($e) use (&$employeeNames) {
+                $employeeNames[] = strtolower(trim($e->full_name));
+
+                return [
+                    'name' => $e->full_name,
+                    'type' => 'Guru / Staf',
+                    'info' => $e->nip ? "NIP: {$e->nip}" : 'Guru / Staf SMKN 1 Talaga',
+                ];
+            });
+
+        // Also fetch teachers from core_users that might not be in core_employees
+        $additionalTeachers = User::get()
+            ->filter(fn ($u) => $u->isTeacher())
+            ->reject(fn ($u) => in_array(strtolower(trim($u->name)), $employeeNames, true))
+            ->map(fn ($u) => [
+                'name' => $u->name,
                 'type' => 'Guru / Staf',
-                'info' => $e->nip ? "NIP: {$e->nip}" : 'Guru / Staf SMKN 1 Talaga',
+                'info' => $u->email ? "Email: {$u->email}" : 'Guru / Staf SMKN 1 Talaga',
             ]);
 
         $students = Student::select('full_name', 'national_student_number')
@@ -34,7 +50,7 @@ class CandidateController extends Controller
                 'info' => $s->national_student_number ? "NISN: {$s->national_student_number}" : 'Siswa SMKN 1 Talaga',
             ]);
 
-        return $employees->concat($students)->values()->toArray();
+        return $employees->concat($additionalTeachers)->concat($students)->values()->toArray();
     }
 
     public function index(string $electionId): Response

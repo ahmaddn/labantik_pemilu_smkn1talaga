@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('app_setting_evotes', function (Blueprint $table) {
-            $table->id();
-            $table->string('key')->unique();
-            $table->text('value')->nullable();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('app_setting_evotes')) {
+            Schema::create('app_setting_evotes', function (Blueprint $table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->text('value')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**

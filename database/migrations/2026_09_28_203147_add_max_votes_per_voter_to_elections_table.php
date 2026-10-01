@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('elections_evote', function (Blueprint $table) {
-            $table->unsignedInteger('max_votes_per_voter')->default(1)->after('is_multi_stage');
+            if (! Schema::hasColumn('elections_evote', 'max_votes_per_voter')) {
+                $table->unsignedInteger('max_votes_per_voter')->default(1)->after('is_multi_stage');
+            }
         });
     }
 

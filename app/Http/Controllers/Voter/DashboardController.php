@@ -14,12 +14,14 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // Load all voter access records for logged in user with election details
+        // Load voter access records for logged in user (1 kartu per pemilihan sesuai stage aktif/terakhir)
         $voterAccesses = VoterAccessEvote::with(['election' => function ($query) {
             $query->withCount('candidates');
         }])
             ->where('user_id', $user->id)
+            ->orderBy('stage_number', 'desc')
             ->get()
+            ->unique('election_id')
             ->map(function ($access) {
                 $election = $access->election;
 

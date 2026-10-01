@@ -36,7 +36,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $appName = AppSettingEvote::getValue('app_name', 'LabAntik Pemilu SMKN 1 Talaga');
+        $appName = AppSettingEvote::getValue('app_name', 'E-Voting SMKN 1 Talaga');
 
         return [
             ...parent::share($request),

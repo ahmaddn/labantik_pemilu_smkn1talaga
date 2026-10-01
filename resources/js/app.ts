@@ -1,20 +1,25 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 
-const defaultAppName = import.meta.env.VITE_APP_NAME || 'LabAntik Pemilu SMKN 1 Talaga';
+const defaultAppName = import.meta.env.VITE_APP_NAME || 'E-Voting SMKN 1 Talaga';
 
 void createInertiaApp({
     title: (title) => {
-        const props = (window as any).page?.props;
-        const pageAppName = props?.appSettings?.app_name || defaultAppName;
-        const favicon = props?.appSettings?.app_favicon;
-
-        if (favicon) {
-            const iconLinks = document.querySelectorAll("link[rel*='icon']");
-            iconLinks.forEach((link: any) => {
-                if (link) {
-                    link.href = favicon;
+        let pageAppName = defaultAppName;
+        try {
+            const pageData = document.getElementById('app')?.dataset?.page;
+            if (pageData) {
+                const parsed = JSON.parse(pageData);
+                if (parsed?.props?.appSettings?.app_name) {
+                    pageAppName = parsed.props.appSettings.app_name;
                 }
-            });
+            }
+        } catch (e) {
+            // fallback
+        }
+
+        const props = (window as any).page?.props;
+        if (props?.appSettings?.app_name) {
+            pageAppName = props.appSettings.app_name;
         }
 
         return title ? `${title} - ${pageAppName}` : pageAppName;

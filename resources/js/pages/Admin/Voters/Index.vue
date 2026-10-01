@@ -146,8 +146,8 @@
                         >
                             <tr
                                 v-if="
-                                    !paginatedVoters ||
-                                    paginatedVoters.length === 0
+                                    !voterAccesses.data ||
+                                    voterAccesses.data.length === 0
                                 "
                             >
                                 <td
@@ -172,7 +172,7 @@
                                 </td>
                             </tr>
                             <tr
-                                v-for="access in paginatedVoters"
+                                v-for="access in voterAccesses.data"
                                 :key="access.id"
                                 class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
                             >
@@ -232,53 +232,33 @@
                     </table>
                 </div>
 
-                <!-- Vue Pagination Bar -->
+                <!-- Server-Side Pagination Bar -->
                 <div
-                    v-if="filteredVoters.length > 0"
+                    v-if="voterAccesses.links && voterAccesses.links.length > 3"
                     class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 p-4 text-xs sm:flex-row dark:border-slate-700"
                 >
                     <div class="font-medium text-slate-500 dark:text-slate-400">
-                        Menampilkan {{ (currentPage - 1) * pageSize + 1 }} -
-                        {{
-                            Math.min(
-                                currentPage * pageSize,
-                                filteredVoters.length,
-                            )
-                        }}
-                        dari {{ filteredVoters.length }} pemilih
+                        Menampilkan {{ voterAccesses.from || 0 }} -
+                        {{ voterAccesses.to || 0 }} dari {{ voterAccesses.total || 0 }} pemilih
                     </div>
 
-                    <div v-if="totalPages > 1" class="flex items-center gap-1">
-                        <button
-                            type="button"
-                            :disabled="currentPage === 1"
-                            @click="currentPage--"
-                            class="cursor-pointer rounded-lg bg-slate-100 px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200"
-                        >
-                            &laquo; Prev
-                        </button>
-                        <button
-                            v-for="p in totalPages"
-                            :key="p"
-                            type="button"
-                            @click="currentPage = p"
+                    <div class="flex flex-wrap items-center gap-1">
+                        <component
+                            :is="link.url ? Link : 'span'"
+                            v-for="(link, idx) in voterAccesses.links"
+                            :key="idx"
+                            :href="link.url || undefined"
+                            preserve-scroll
+                            v-html="link.label"
                             :class="[
-                                'cursor-pointer rounded-lg px-3 py-1.5 font-bold transition-colors',
-                                p === currentPage
+                                'rounded-lg px-3 py-1.5 font-bold transition-colors text-xs select-none',
+                                link.active
                                     ? 'bg-blue-600 text-white'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200',
+                                    : link.url
+                                      ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 cursor-pointer'
+                                      : 'text-slate-400 opacity-40 cursor-not-allowed dark:text-slate-500',
                             ]"
-                        >
-                            {{ p }}
-                        </button>
-                        <button
-                            type="button"
-                            :disabled="currentPage === totalPages"
-                            @click="currentPage++"
-                            class="cursor-pointer rounded-lg bg-slate-100 px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200"
-                        >
-                            Next &raquo;
-                        </button>
+                        />
                     </div>
                 </div>
             </div>
@@ -339,6 +319,9 @@ const props = defineProps<{
         class_name: string | null;
     };
     voterAccesses: any;
+    filters?: {
+        search?: string;
+    };
     stats: {
         total_access: number;
         total_voted: number;
@@ -350,47 +333,27 @@ const showBatchConfirm = ref(false);
 const showDeleteConfirm = ref(false);
 const selectedAccessToDelete = ref<any | null>(null);
 
-const searchQuery = ref('');
-const currentPage = ref(1);
-const pageSize = ref(15);
+const searchQuery = ref(props.filters?.search || '');
+let searchTimer: any = null;
 
-const allVoters = computed(() => {
-    return Array.isArray(props.voterAccesses)
-        ? props.voterAccesses
-        : props.voterAccesses?.data || [];
-});
-
-const filteredVoters = computed(() => {
-    if (!searchQuery.value.trim()) {
-        return allVoters.value;
-    }
-    const q = searchQuery.value.toLowerCase().trim();
-    return allVoters.value.filter((item: any) => {
-        return (
-            (item.user_name && item.user_name.toLowerCase().includes(q)) ||
-            (item.user_email && item.user_email.toLowerCase().includes(q)) ||
-            (item.user_subtext &&
-                item.user_subtext.toLowerCase().includes(q)) ||
-            (item.user_role && item.user_role.toLowerCase().includes(q))
+const handleSearch = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        router.get(
+            `/admin/pemilihan/${props.election.id}/pemilih`,
+            { search: searchQuery.value },
+            { preserveState: true, replace: true, preserveScroll: true }
         );
-    });
-});
-
-const totalPages = computed(
-    () => Math.ceil(filteredVoters.value.length / pageSize.value) || 1,
-);
-
-const paginatedVoters = computed(() => {
-    const start = (currentPage.value - 1) * pageSize.value;
-    return filteredVoters.value.slice(start, start + pageSize.value);
-});
-
-watch(searchQuery, () => {
-    currentPage.value = 1;
-});
+    }, 350);
+};
 
 const clearSearch = () => {
     searchQuery.value = '';
+    router.get(
+        `/admin/pemilihan/${props.election.id}/pemilih`,
+        {},
+        { preserveState: true, replace: true }
+    );
 };
 
 const generateBatch = () => {

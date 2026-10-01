@@ -1,4 +1,5 @@
 <template>
+    <Head :title="computedTitle" />
     <div
         class="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100"
     >
@@ -254,7 +255,7 @@
                     Dilindungi.
                 </p>
                 <p class="font-medium text-slate-400 dark:text-slate-500">
-                    SMKN 1 Talaga
+                    Developed by ICT SMKN 1 Talaga
                 </p>
             </div>
         </footer>
@@ -263,7 +264,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { usePage, Link } from '@inertiajs/vue3';
+import { usePage, Link, Head } from '@inertiajs/vue3';
 import {
     Vote,
     LogOut,
@@ -277,6 +278,10 @@ import {
 import ThemeToggle from '@/Components/ThemeToggle.vue';
 
 const props = defineProps({
+    title: {
+        type: String,
+        default: '',
+    },
     hideNavbar: {
         type: Boolean,
         default: false,
@@ -284,6 +289,16 @@ const props = defineProps({
 });
 
 const page = usePage();
+
+const computedTitle = computed(() => {
+    if (props.title) return props.title;
+    if (page.url === '/' || page.url === '') return 'Beranda E-Voting';
+    if (page.url.startsWith('/login')) return 'Masuk Pemilih';
+    if (page.url.startsWith('/dashboard')) return 'Dashboard Pemilih';
+    if (page.url.startsWith('/bilik-suara')) return 'Bilik Suara Digital';
+    if (page.url.startsWith('/hasil')) return 'Hasil Pemilihan';
+    return '';
+});
 const user = computed(() => (page.props.auth as any)?.user || null);
 const flash = computed(() => (page.props.flash as any) || {});
 const appSettings = computed(() => (page.props.appSettings as any) || {});

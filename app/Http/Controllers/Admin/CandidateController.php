@@ -32,8 +32,10 @@ class CandidateController extends Controller
             });
 
         // Also fetch teachers from core_users that might not be in core_employees
-        $additionalTeachers = User::get()
-            ->filter(fn ($u) => $u->isTeacher())
+        $additionalTeachers = User::select('name', 'email')
+            ->where('role', 'guru')
+            ->where('is_active', true)
+            ->get()
             ->reject(fn ($u) => in_array(strtolower(trim($u->name)), $employeeNames, true))
             ->map(fn ($u) => [
                 'name' => $u->name,

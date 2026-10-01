@@ -1,4 +1,5 @@
 <template>
+    <Head title="Masuk Pemilih" />
     <!-- Full-Bleed Viewport 50:50 Split Screen -->
     <div
         class="grid min-h-screen w-full grid-cols-1 overflow-x-hidden bg-slate-50 text-slate-900 transition-colors duration-200 lg:grid-cols-2 dark:bg-slate-950 dark:text-slate-100"
@@ -205,7 +206,7 @@
             <div
                 class="pt-4 text-center text-[10px] font-bold tracking-widest text-slate-400 uppercase dark:text-slate-500"
             >
-                DEVELOPED FOR LABANTIK JURUSAN &copy; 2026
+                SMKN 1 TALAGA &copy; 2026 &bull; DEVELOPED BY ICT SMKN 1 TALAGA
             </div>
         </div>
     </div>
@@ -213,7 +214,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useForm, Link } from '@inertiajs/vue3';
+import { useForm, Link, Head } from '@inertiajs/vue3';
 import {
     AtSign,
     UserCheck,

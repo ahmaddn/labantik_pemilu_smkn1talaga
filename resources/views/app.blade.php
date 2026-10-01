@@ -6,7 +6,7 @@
 
 @php
     $customFavicon = \App\Models\AppSettingEvote::getValue('app_favicon', '/favicon.ico');
-    $appName = \App\Models\AppSettingEvote::getValue('app_name', 'LabAntik Pemilu SMKN 1 Talaga');
+    $appName = \App\Models\AppSettingEvote::getValue('app_name', 'E-Voting SMKN 1 Talaga');
 
     $faviconUrl = $customFavicon;
     if ($customFavicon && $customFavicon !== '/favicon.ico' && file_exists(public_path($customFavicon))) {
@@ -35,9 +35,7 @@
         </script>
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
-        <x-inertia::head>
-            <title>{{ $appName }}</title>
-        </x-inertia::head>
+        @inertiaHead
     </head>
     <body class="font-sans antialiased bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <x-inertia::app />

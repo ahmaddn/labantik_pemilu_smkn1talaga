@@ -15,7 +15,7 @@ class SettingController extends Controller
     public function index(): Response
     {
         $settings = [
-            'app_name' => AppSettingEvote::getValue('app_name', 'LabAntik Pemilu SMKN 1 Talaga'),
+            'app_name' => AppSettingEvote::getValue('app_name', 'E-Voting SMKN 1 Talaga'),
             'app_description' => AppSettingEvote::getValue('app_description', 'Sistem Pemilihan Umum E-Voting SMKN 1 Talaga'),
             'active_academic_year' => AppSettingEvote::getValue('active_academic_year', '2025/2026'),
             'app_logo' => AppSettingEvote::getValue('app_logo'),

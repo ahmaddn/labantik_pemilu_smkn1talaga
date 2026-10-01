@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -42,11 +43,15 @@ return new class extends Migration
             if (! Schema::hasColumn('voter_accesses_evote', 'stage_number')) {
                 $table->integer('stage_number')->default(1)->after('election_id');
             }
-            try {
-                $table->unique(['election_id', 'user_id', 'stage_number'], 'unique_voter_election_stage');
-            } catch (Throwable $e) {
-            }
         });
+
+        // Add unique index safely if it doesn't exist
+        $indexes = collect(DB::select("SHOW INDEX FROM `voter_accesses_evote` WHERE Key_name = 'unique_voter_election_stage'"));
+        if ($indexes->isEmpty()) {
+            Schema::table('voter_accesses_evote', function (Blueprint $table) {
+                $table->unique(['election_id', 'user_id', 'stage_number'], 'unique_voter_election_stage');
+            });
+        }
     }
 
     /**

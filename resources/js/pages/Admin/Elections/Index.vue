@@ -203,56 +203,71 @@
                             </div>
 
                             <div
-                                class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800"
+                                class="space-y-2.5 border-t border-slate-100 pt-3 dark:border-slate-800"
                             >
-                                <!-- Toggle Publish Button -->
-                                <button
-                                    type="button"
-                                    @click="togglePublish(election)"
-                                    :class="[
-                                        'flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors',
-                                        election.is_published
-                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                            : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300',
-                                    ]"
-                                >
-                                    <Eye
-                                        v-if="election.is_published"
-                                        class="h-3.5 w-3.5 text-emerald-600"
-                                    />
-                                    <EyeOff v-else class="h-3.5 w-3.5 text-amber-600" />
-                                    <span>{{
-                                        election.is_published
-                                            ? 'Hasil Dipublikasi'
-                                            : 'Hasil Tersembunyi'
-                                    }}</span>
-                                </button>
+                                <!-- Baris Utama: Tombol Simulasi & Lihat Hasil -->
+                                <div class="grid grid-cols-2 gap-2">
+                                    <Link
+                                        :href="`/admin/pemilihan/${election.id}/simulasi`"
+                                        class="flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-sm transition-all hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/60"
+                                        title="Uji Simulasi Voting & Multi-Round"
+                                    >
+                                        <FlaskConical class="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                        <span>Simulasi</span>
+                                    </Link>
 
-                                <div class="flex items-center gap-1">
                                     <Link
                                         :href="`/admin/pemilihan/${election.id}/hasil`"
-                                        class="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/60"
+                                        class="flex items-center justify-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-800 shadow-sm transition-all hover:bg-purple-100 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/60"
                                     >
-                                        <BarChart3 class="h-3.5 w-3.5" />
+                                        <BarChart3 class="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                                         <span>Lihat Hasil</span>
                                     </Link>
+                                </div>
 
-                                    <Link
-                                        :href="`/admin/pemilihan/${election.id}/edit`"
-                                        class="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400"
-                                        title="Edit Pemilihan"
-                                    >
-                                        <Edit class="h-4 w-4" />
-                                    </Link>
-
+                                <!-- Baris Pengaturan: Toggle Publikasi & Aksi Edit/Hapus -->
+                                <div class="flex items-center justify-between gap-2 pt-0.5">
                                     <button
                                         type="button"
-                                        @click="deleteElection(election)"
-                                        class="cursor-pointer rounded-lg p-2 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-                                        title="Hapus Pemilihan"
+                                        @click="togglePublish(election)"
+                                        :class="[
+                                            'flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 px-3 text-xs font-bold transition-colors cursor-pointer',
+                                            election.is_published
+                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100'
+                                                : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300 hover:bg-slate-100',
+                                        ]"
+                                        :title="election.is_published ? 'Klik untuk sembunyikan hasil dari pemilih' : 'Klik untuk tampilkan hasil ke pemilih'"
                                     >
-                                        <Trash2 class="h-4 w-4" />
+                                        <Eye
+                                            v-if="election.is_published"
+                                            class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+                                        />
+                                        <EyeOff v-else class="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                                        <span>{{
+                                            election.is_published
+                                                ? 'Hasil Dipublikasi'
+                                                : 'Hasil Tersembunyi'
+                                        }}</span>
                                     </button>
+
+                                    <div class="flex shrink-0 items-center gap-1.5">
+                                        <Link
+                                            :href="`/admin/pemilihan/${election.id}/edit`"
+                                            class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-blue-400"
+                                            title="Edit Pemilihan"
+                                        >
+                                            <Edit class="h-3.5 w-3.5" />
+                                        </Link>
+
+                                        <button
+                                            type="button"
+                                            @click="deleteElection(election)"
+                                            class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 shadow-sm transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60"
+                                            title="Hapus Pemilihan"
+                                        >
+                                            <Trash2 class="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -313,6 +328,7 @@ import {
     UserCheck,
     Vote,
     BarChart3,
+    FlaskConical,
 } from '@lucide/vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';

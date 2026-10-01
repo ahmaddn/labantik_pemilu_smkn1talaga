@@ -10,26 +10,55 @@ use App\Models\VoterAccessEvote;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class VoterAccessController extends Controller
 {
-    public function index(string $electionId): Response
+    public function index(Request $request, string $electionId): Response
     {
         $election = ElectionEvote::with(['targetClass'])->findOrFail($electionId);
+        $search = trim($request->input('search', ''));
 
-        $voterAccesses = VoterAccessEvote::with(['user.student', 'user.employee'])
-            ->where('election_id', $electionId)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($access) {
+        $query = VoterAccessEvote::with([
+            'user' => function ($q) {
+                $q->select('id', 'name', 'email', 'role');
+            },
+            'user.student' => function ($q) {
+                $q->select('id', 'user_id', 'student_number');
+            },
+            'user.employee' => function ($q) {
+                $q->select('id', 'user_id', 'nip');
+            },
+        ])
+            ->where('election_id', $electionId);
+
+        if (! empty($search)) {
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhereHas('student', function ($sq) use ($search) {
+                        $sq->where('student_number', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('employee', function ($eq) use ($search) {
+                        $eq->where('nip', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $voterAccesses = $query->orderBy('created_at', 'desc')
+            ->paginate(25)
+            ->withQueryString()
+            ->through(function ($access) {
                 $user = $access->user;
                 $subtext = '-';
 
-                if ($user && $user->isStudent() && $user->student) {
-                    $subtext = 'NIS: '.$user->student->student_number;
-                } elseif ($user && $user->isTeacher()) {
+                if ($user && ($user->isStudent() || $user->student)) {
+                    $subtext = $user->student && ! empty($user->student->student_number)
+                        ? 'NIS: '.$user->student->student_number
+                        : ($user->email ? 'Email: '.$user->email : 'Siswa');
+                } elseif ($user && ($user->isTeacher() || $user->employee)) {
                     $subtext = ($user->employee && ! empty($user->employee->nip))
                         ? 'NIP: '.$user->employee->nip
                         : ($user->email ? 'Email: '.$user->email : 'Guru / Staf');
@@ -48,8 +77,8 @@ class VoterAccessController extends Controller
             });
 
         $stats = [
-            'total_access' => $voterAccesses->count(),
-            'total_voted' => $voterAccesses->where('is_voted', true)->count(),
+            'total_access' => VoterAccessEvote::where('election_id', $electionId)->count(),
+            'total_voted' => VoterAccessEvote::where('election_id', $electionId)->where('is_voted', true)->count(),
         ];
 
         return Inertia::render('Admin/Voters/Index', [
@@ -61,6 +90,9 @@ class VoterAccessController extends Controller
                 'class_name' => $election->targetClass ? $election->targetClass->name : null,
             ],
             'voterAccesses' => $voterAccesses,
+            'filters' => [
+                'search' => $search,
+            ],
             'stats' => $stats,
         ]);
     }
@@ -80,9 +112,13 @@ class VoterAccessController extends Controller
 
         // 1. Fetch eligible student user_ids
         if (in_array($targetVoter, ['all', 'student'], true)) {
+            // Ambil siswa yang AKTIF pada Tahun Ajaran yang disetting di pemilihan (tidak mutasi, tidak lulus)
             $studentQuery = StudentAcademicYear::query()
-                ->where('status', 'Active')
+                ->whereIn('ref_student_academic_years.status', ['Active', 'Naik Kelas'])
+                ->whereNotIn('ref_student_academic_years.status', ['Mutasi Out', 'Lulus'])
                 ->join('ref_students', 'ref_student_academic_years.student_id', '=', 'ref_students.id')
+                ->join('core_users', 'ref_students.user_id', '=', 'core_users.id')
+                ->where('core_users.is_active', true)
                 ->whereNotNull('ref_students.user_id');
 
             if ($academicYear) {
@@ -91,6 +127,19 @@ class VoterAccessController extends Controller
 
             if ($classId) {
                 $studentQuery->where('ref_student_academic_years.class_id', $classId);
+            }
+
+            // Pastikan tidak mengambil siswa yang tercatat mutasi keluar pada tahun ajaran tersebut
+            if ($academicYear) {
+                $mutatedStudentIds = DB::table('ref_student_academic_years')
+                    ->where('academic_year', $academicYear)
+                    ->where('status', 'Mutasi Out')
+                    ->pluck('student_id')
+                    ->toArray();
+
+                if (! empty($mutatedStudentIds)) {
+                    $studentQuery->whereNotIn('ref_student_academic_years.student_id', $mutatedStudentIds);
+                }
             }
 
             $studentUserIds = $studentQuery->pluck('ref_students.user_id')->toArray();
@@ -120,6 +169,7 @@ class VoterAccessController extends Controller
 
             $teacherUserIdsRole = DB::table('core_users')
                 ->where('role', 'guru')
+                ->where('is_active', true)
                 ->pluck('id')
                 ->toArray();
 
@@ -133,12 +183,21 @@ class VoterAccessController extends Controller
             return back()->with('error', 'Tidak ditemukan pemilih yang memenuhi kriteria (Siswa Aktif / Guru).');
         }
 
+        // BERSIHKAN hak akses lama yang BELUM memilih tetapi sudah tidak masuk dalam target pemilihan yang baru
+        // (Contoh: awalnya siswa lalu diubah ke guru saja, maka akses siswa yang belum memilih dihapus otomatis)
+        VoterAccessEvote::where('election_id', $electionId)
+            ->where('is_voted', false)
+            ->whereNotIn('user_id', $userIds)
+            ->delete();
+
         $now = now();
         $records = [];
         foreach ($userIds as $userId) {
             $records[] = [
+                'id' => (string) Str::uuid(),
                 'election_id' => $electionId,
                 'user_id' => $userId,
+                'stage_number' => $election->current_stage ?? 1,
                 'is_voted' => false,
                 'voted_at' => null,
                 'created_at' => $now,
@@ -153,7 +212,7 @@ class VoterAccessController extends Controller
             $countInserted += count($chunk);
         }
 
-        return back()->with('success', "Berhasil memproses hak akses pemilih untuk {$countInserted} akun!");
+        return back()->with('success', "Berhasil menyinkronkan hak akses pemilih untuk {$countInserted} akun!");
     }
 
     /**

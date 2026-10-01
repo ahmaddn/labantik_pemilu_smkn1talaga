@@ -169,7 +169,7 @@
                                     v-model="form.app_name"
                                     type="text"
                                     required
-                                    placeholder="Contoh: LabAntik Pemilu SMKN 1 Talaga"
+                                    placeholder="Contoh: E-Voting SMKN 1 Talaga"
                                     class="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                 />
                                 <span

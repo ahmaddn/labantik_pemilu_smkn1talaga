@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ElectionController;
 use App\Http\Controllers\Admin\GuideController;
 use App\Http\Controllers\Admin\ResultController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\SimulationController;
 use App\Http\Controllers\Admin\VoterAccessController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LandingController;
@@ -48,6 +49,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/pemilihan/{election}/hasil', [ResultController::class, 'show'])->name('elections.results');
         Route::post('/pemilihan/{election}/advance-stage', [ResultController::class, 'advanceStage'])->name('elections.advance-stage');
         Route::post('/pemilihan/{election}/reset-stages', [ResultController::class, 'resetStages'])->name('elections.reset-stages');
+
+        // Simulation Routes
+        Route::get('/pemilihan/{election}/simulasi', [SimulationController::class, 'show'])->name('elections.simulation.show');
+        Route::post('/pemilihan/{election}/simulasi/vote', [SimulationController::class, 'vote'])->name('elections.simulation.vote');
+        Route::post('/pemilihan/{election}/simulasi/advance-stage', [SimulationController::class, 'advanceStage'])->name('elections.simulation.advance');
+        Route::delete('/pemilihan/{election}/simulasi/reset', [SimulationController::class, 'reset'])->name('elections.simulation.reset');
 
         // Candidate Management
         Route::get('/pemilihan/{election}/kandidat', [CandidateController::class, 'index'])->name('candidates.index');

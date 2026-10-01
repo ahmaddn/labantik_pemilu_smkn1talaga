@@ -1,4 +1,5 @@
 <template>
+    <Head :title="computedTitle" />
     <div
         class="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors duration-200 md:flex-row dark:bg-slate-950 dark:text-slate-100"
     >
@@ -268,7 +269,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { usePage, Link } from '@inertiajs/vue3';
+import { usePage, Link, Head } from '@inertiajs/vue3';
 import {
     Shield,
     BarChart3,
@@ -286,8 +287,26 @@ import {
 } from '@lucide/vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
 
+const props = defineProps<{
+    title?: string;
+}>();
+
 const isSidebarOpen = ref(false);
 const page = usePage();
+
+const computedTitle = computed(() => {
+    if (props.title) return props.title;
+    if (page.url.startsWith('/admin/pemilihan') && page.url.includes('/pemilih')) return 'Kelola Hak Pilih';
+    if (page.url.startsWith('/admin/pemilihan') && page.url.includes('/kandidat')) return 'Kelola Paslon & Kandidat';
+    if (page.url.startsWith('/admin/pemilihan') && page.url.includes('/simulasi')) return 'Simulasi Voting';
+    if (page.url.startsWith('/admin/pemilihan') && page.url.includes('/hasil')) return 'Hasil Pemilihan';
+    if (page.url.startsWith('/admin/pemilihan/create')) return 'Buat Pemilihan Baru';
+    if (page.url.startsWith('/admin/pemilihan')) return 'Kelola Pemilihan';
+    if (page.url.startsWith('/admin/pengaturan')) return 'Pengaturan Aplikasi';
+    if (page.url.startsWith('/admin/panduan')) return 'Panduan Panitia';
+    if (page.url === '/admin' || page.url === '/admin/') return 'Dashboard Panitia';
+    return 'Panel Admin';
+});
 
 const user = computed(() => (page.props.auth as any)?.user || null);
 const flash = computed(() => (page.props.flash as any) || {});

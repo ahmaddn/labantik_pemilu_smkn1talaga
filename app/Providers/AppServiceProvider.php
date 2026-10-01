@@ -24,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // 7 days remember me duration (7 * 24 * 60 minutes)
+        if (method_exists(auth()->guard(), 'setRememberDuration')) {
+            auth()->guard()->setRememberDuration(7 * 24 * 60);
+        }
     }
 
     /**

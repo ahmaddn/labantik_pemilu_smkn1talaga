@@ -7,6 +7,7 @@ use App\Models\ElectionEvote;
 use App\Models\Employee;
 use App\Models\Student;
 use App\Models\VoteEvote;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,8 +16,21 @@ class DashboardController extends Controller
     public function index(): Response
     {
         $totalElections = ElectionEvote::count();
-        $totalStudents = Student::count();
-        $totalTeachers = Employee::count();
+
+        // 1. Hitung Siswa Aktif (sesuai kriteria pemilih aktif di tahun ajaran terkini atau total siswa aktif)
+        $totalStudents = Student::whereHas('user', function ($q) {
+            $q->where('is_active', true);
+        })->count();
+
+        // 2. Hitung Guru & Staf (sama persis dengan kriteria generate akses pemilih guru)
+        $teacherUserIdsEmp = Employee::whereNotNull('user_id')->pluck('user_id')->toArray();
+        $teacherUserIdsRole = DB::table('core_users')
+            ->where('role', 'guru')
+            ->where('is_active', true)
+            ->pluck('id')
+            ->toArray();
+        $totalTeachers = count(array_unique(array_filter(array_merge($teacherUserIdsEmp, $teacherUserIdsRole))));
+
         $totalVotesCast = VoteEvote::count();
 
         $recentElections = ElectionEvote::withCount(['candidates', 'voterAccesses', 'votes'])

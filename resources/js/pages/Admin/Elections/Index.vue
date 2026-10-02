@@ -80,24 +80,32 @@
                                     }}
                                 </span>
 
-                                <span
-                                    v-if="election.status === 'ongoing'"
-                                    class="rounded-md bg-emerald-100 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-emerald-800 uppercase dark:bg-emerald-950 dark:text-emerald-300"
-                                >
-                                    Berlangsung
-                                </span>
-                                <span
-                                    v-else-if="election.status === 'upcoming'"
-                                    class="rounded-md bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-amber-800 uppercase dark:bg-amber-950 dark:text-amber-300"
-                                >
-                                    Akan Datang
-                                </span>
-                                <span
-                                    v-else
-                                    class="rounded-md bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-slate-700 uppercase dark:bg-slate-800 dark:text-slate-300"
-                                >
-                                    Selesai
-                                </span>
+                                <div class="flex items-center gap-1.5">
+                                    <span
+                                        v-if="election.is_simulation"
+                                        class="rounded-md border border-amber-300 bg-amber-100 px-2 py-0.5 text-[9px] font-black tracking-wider text-amber-900 uppercase dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+                                    >
+                                        SIMULASI
+                                    </span>
+                                    <span
+                                        v-if="election.status === 'ongoing'"
+                                        class="rounded-md bg-emerald-100 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-emerald-800 uppercase dark:bg-emerald-950 dark:text-emerald-300"
+                                    >
+                                        Berlangsung
+                                    </span>
+                                    <span
+                                        v-else-if="election.status === 'upcoming'"
+                                        class="rounded-md bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-amber-800 uppercase dark:bg-amber-950 dark:text-amber-300"
+                                    >
+                                        Akan Datang
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="rounded-md bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-slate-700 uppercase dark:bg-slate-800 dark:text-slate-300"
+                                    >
+                                        Selesai
+                                    </span>
+                                </div>
                             </div>
 
                             <!-- Title & Description -->
@@ -225,13 +233,28 @@
                                     </Link>
                                 </div>
 
-                                <!-- Baris Pengaturan: Toggle Publikasi & Aksi Edit/Hapus -->
-                                <div class="flex items-center justify-between gap-2 pt-0.5">
+                                <!-- Baris Pengaturan: Toggle Simulasi & Toggle Publikasi & Aksi Edit/Hapus -->
+                                <div class="grid grid-cols-2 gap-2 pt-0.5">
+                                    <button
+                                        type="button"
+                                        @click="toggleSimulation(election)"
+                                        :class="[
+                                            'flex items-center justify-center gap-1.5 rounded-xl border py-2 px-2 text-xs font-bold transition-colors cursor-pointer',
+                                            election.is_simulation
+                                                ? 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200'
+                                                : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300 hover:bg-slate-100',
+                                        ]"
+                                        :title="election.is_simulation ? 'Klik untuk matikan mode simulasi' : 'Klik untuk aktifkan mode simulasi'"
+                                    >
+                                        <FlaskConical class="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                        <span>{{ election.is_simulation ? 'Simulasi: ON' : 'Simulasi: OFF' }}</span>
+                                    </button>
+
                                     <button
                                         type="button"
                                         @click="togglePublish(election)"
                                         :class="[
-                                            'flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 px-3 text-xs font-bold transition-colors cursor-pointer',
+                                            'flex items-center justify-center gap-1.5 rounded-xl border py-2 px-2 text-xs font-bold transition-colors cursor-pointer',
                                             election.is_published
                                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100'
                                                 : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300 hover:bg-slate-100',
@@ -245,29 +268,29 @@
                                         <EyeOff v-else class="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                                         <span>{{
                                             election.is_published
-                                                ? 'Hasil Dipublikasi'
-                                                : 'Hasil Tersembunyi'
+                                                ? 'Hasil: Buka'
+                                                : 'Hasil: Tutup'
                                         }}</span>
                                     </button>
+                                </div>
 
-                                    <div class="flex shrink-0 items-center gap-1.5">
-                                        <Link
-                                            :href="`/admin/pemilihan/${election.id}/edit`"
-                                            class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-blue-400"
-                                            title="Edit Pemilihan"
-                                        >
-                                            <Edit class="h-3.5 w-3.5" />
-                                        </Link>
+                                <div class="flex items-center justify-end gap-1.5 pt-0.5">
+                                    <Link
+                                        :href="`/admin/pemilihan/${election.id}/edit`"
+                                        class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-blue-400"
+                                        title="Edit Pemilihan"
+                                    >
+                                        <Edit class="h-3.5 w-3.5" />
+                                    </Link>
 
-                                        <button
-                                            type="button"
-                                            @click="deleteElection(election)"
-                                            class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 shadow-sm transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60"
-                                            title="Hapus Pemilihan"
-                                        >
-                                            <Trash2 class="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        @click="deleteElection(election)"
+                                        class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 shadow-sm transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60"
+                                        title="Hapus Pemilihan"
+                                    >
+                                        <Trash2 class="h-3.5 w-3.5" />
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -371,5 +394,9 @@ const proceedDeleteElection = () => {
 
 const togglePublish = (election: any) => {
     router.post(`/admin/pemilihan/${election.id}/toggle-publish`);
+};
+
+const toggleSimulation = (election: any) => {
+    router.post(`/admin/pemilihan/${election.id}/toggle-simulation`);
 };
 </script>

@@ -3,10 +3,20 @@
         <div class="mx-auto max-w-7xl space-y-5 pb-32 sm:pb-12">
             <!-- Election Header (Solid Blue, Clean Rounded-xl, No Gradients/Circles) -->
             <div
-                class="space-y-2.5 rounded-2xl bg-blue-700 p-5 text-white shadow-sm sm:p-6 dark:bg-blue-800"
+                :class="[
+                    'space-y-2.5 rounded-2xl p-5 text-white shadow-sm sm:p-6',
+                    election.is_simulation ? 'bg-amber-600 dark:bg-amber-700' : 'bg-blue-700 dark:bg-blue-800'
+                ]"
             >
                 <div class="flex flex-wrap items-center gap-2">
                     <span
+                        v-if="election.is_simulation"
+                        class="rounded-lg bg-amber-900/60 px-2.5 py-1 text-[11px] font-black tracking-wider text-amber-200 uppercase"
+                    >
+                        GLADI / SIMULASI VOTING
+                    </span>
+                    <span
+                        v-else
                         class="rounded-lg bg-blue-800 px-2.5 py-1 text-[11px] font-bold tracking-wider text-blue-100 uppercase"
                     >
                         Surat Suara Digital
@@ -19,9 +29,9 @@
                         {{ election.total_stages }}
                     </span>
                     <span
-                        class="rounded-lg bg-blue-900/60 px-2.5 py-1 text-[11px] font-semibold text-blue-200"
+                        class="rounded-lg bg-black/20 px-2.5 py-1 text-[11px] font-semibold text-white/90"
                     >
-                        {{ election.candidates.length }} Pasangan Kandidat
+                        {{ election.candidates.length }} Opsi Pasangan
                     </span>
                 </div>
 
@@ -31,10 +41,26 @@
 
                 <p
                     v-if="election.description"
-                    class="text-xs leading-relaxed text-blue-100 sm:text-sm"
+                    class="text-xs leading-relaxed text-white/90 sm:text-sm"
                 >
                     {{ election.description }}
                 </p>
+            </div>
+
+            <!-- Simulation Notice Banner -->
+            <div
+                v-if="election.is_simulation"
+                class="flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <FlaskConical class="h-5 w-5" />
+                </div>
+                <div class="text-xs">
+                    <h4 class="font-extrabold uppercase">Mode Gladi / Simulasi Aktif</h4>
+                    <p class="mt-0.5 text-amber-800 dark:text-amber-300">
+                        Nama paslon disamarkan menjadi <strong>Kandidat A, Kandidat B, dst.</strong> untuk menjaga netralitas selama sesi simulasi. Suara Anda tersimpan di sandbox uji coba dan <strong>tidak memengaruhi</strong> hasil pemilu resmi.
+                    </p>
+                </div>
             </div>
 
             <!-- Controls & Filter Toolbar -->
@@ -475,6 +501,7 @@ import {
     Search,
     ChevronLeft,
     ChevronRight,
+    FlaskConical,
 } from '@lucide/vue';
 import VoterLayout from '@/Layouts/VoterLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -486,6 +513,7 @@ const props = defineProps<{
         description: string;
         type: string;
         is_multi_stage?: boolean;
+        is_simulation?: boolean;
         max_votes_per_voter?: number;
         current_stage?: number;
         total_stages?: number;

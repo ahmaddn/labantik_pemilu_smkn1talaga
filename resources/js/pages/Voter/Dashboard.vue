@@ -10,7 +10,7 @@
                         class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-base font-bold text-white shadow-sm"
                     >
                         {{
-                            user.name ? user.name.charAt(0).toUpperCase() : 'U'
+                            user.name ? user.name.charAt(0).toUpperCase() : "U"
                         }}
                     </div>
                     <div>
@@ -84,16 +84,27 @@
                     class="flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
                 >
                     <div class="space-y-3">
-                        <!-- Multi-Stage Tag -->
-                        <div
-                            v-if="item.election.is_multi_stage"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-700 uppercase dark:text-amber-400"
-                        >
-                            <Layers class="h-3 w-3" />
-                            <span
-                                >Tahap {{ item.election.current_stage }} dari
-                                {{ item.election.total_stages }}</span
+                        <!-- Badges Bar: Multi-Stage & Simulation Indicator -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div
+                                v-if="item.election.is_simulation"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black text-amber-800 uppercase dark:text-amber-300"
                             >
+                                <FlaskConical class="h-3 w-3" />
+                                <span>SESI SIMULASI</span>
+                            </div>
+
+                            <div
+                                v-if="item.election.is_multi_stage"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-700 uppercase dark:text-blue-400"
+                            >
+                                <Layers class="h-3 w-3" />
+                                <span
+                                    >Tahap
+                                    {{ item.election.current_stage }} dari
+                                    {{ item.election.total_stages }}</span
+                                >
+                            </div>
                         </div>
 
                         <!-- Header & Status Badge -->
@@ -101,44 +112,97 @@
                             <h4
                                 class="text-base leading-snug font-bold text-slate-900 dark:text-white"
                             >
+                                <span
+                                    v-if="item.election.is_simulation"
+                                    class="text-amber-600 dark:text-amber-400 font-extrabold"
+                                    >[SIMULASI]
+                                </span>
                                 {{ item.election.title }}
                             </h4>
 
                             <!-- Dynamic Status Badges -->
-                            <span
-                                v-if="item.is_voted"
-                                class="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                            >
-                                <CheckCircle2
-                                    class="h-3 w-3 text-emerald-600"
-                                />
-                                <span>Sudah Memilih</span>
-                            </span>
-
-                            <span
-                                v-else-if="item.election.status === 'upcoming'"
-                                class="flex shrink-0 items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                            >
-                                <Clock class="h-3 w-3 text-amber-600" />
-                                <span>Belum Mulai</span>
-                            </span>
-
-                            <span
-                                v-else-if="item.election.status === 'ongoing'"
-                                class="flex shrink-0 items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                            >
+                            <!-- Simulation Active Logic -->
+                            <template v-if="item.election.is_simulation">
                                 <span
-                                    class="h-2 w-2 rounded-sm bg-blue-600"
-                                ></span>
-                                <span>Berlangsung</span>
-                            </span>
+                                    v-if="item.is_simulation_voted"
+                                    class="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
+                                    <CheckCircle2
+                                        class="h-3 w-3 text-emerald-600"
+                                    />
+                                    <span>Sudah Coba Simulasi</span>
+                                </span>
+                                <span
+                                    v-else-if="
+                                        item.election.simulation_status ===
+                                        'ongoing'
+                                    "
+                                    class="flex shrink-0 items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                                >
+                                    <span
+                                        class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"
+                                    ></span>
+                                    <span>Simulasi Buka</span>
+                                </span>
+                                <span
+                                    v-else-if="
+                                        item.election.simulation_status ===
+                                        'upcoming'
+                                    "
+                                    class="flex shrink-0 items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                >
+                                    <Clock class="h-3 w-3 text-slate-500" />
+                                    <span>Simulasi Belum Mulai</span>
+                                </span>
+                                <span
+                                    v-else
+                                    class="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                                >
+                                    Simulasi Berakhir
+                                </span>
+                            </template>
 
-                            <span
-                                v-else
-                                class="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                            >
-                                Selesai
-                            </span>
+                            <!-- Official Election Logic -->
+                            <template v-else>
+                                <span
+                                    v-if="item.is_voted"
+                                    class="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
+                                    <CheckCircle2
+                                        class="h-3 w-3 text-emerald-600"
+                                    />
+                                    <span>Sudah Memilih</span>
+                                </span>
+
+                                <span
+                                    v-else-if="
+                                        item.election.status === 'upcoming'
+                                    "
+                                    class="flex shrink-0 items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                >
+                                    <Clock class="h-3 w-3 text-amber-600" />
+                                    <span>Belum Mulai</span>
+                                </span>
+
+                                <span
+                                    v-else-if="
+                                        item.election.status === 'ongoing'
+                                    "
+                                    class="flex shrink-0 items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                                >
+                                    <span
+                                        class="h-2 w-2 rounded-sm bg-blue-600"
+                                    ></span>
+                                    <span>Berlangsung</span>
+                                </span>
+
+                                <span
+                                    v-else
+                                    class="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                                >
+                                    Selesai
+                                </span>
+                            </template>
                         </div>
 
                         <p
@@ -180,7 +244,11 @@
                                     >
                                     <span
                                         class="truncate font-bold text-slate-900 dark:text-white"
-                                        >{{ qualifier.chairman_name }}</span
+                                        >{{
+                                            item.election.is_simulation
+                                                ? "Kandidat Tersamar"
+                                                : qualifier.chairman_name
+                                        }}</span
                                     >
                                 </div>
                             </div>
@@ -191,67 +259,144 @@
                     <div
                         class="border-t border-slate-100 pt-3 dark:border-slate-700"
                     >
-                        <!-- Ongoing & Not Voted -->
-                        <Link
-                            v-if="
-                                item.election.status === 'ongoing' &&
-                                !item.is_voted
-                            "
-                            :href="`/vote/${item.election.id}`"
-                            class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
-                        >
-                            <Vote class="h-4 w-4" />
-                            <span
-                                >Pilih Sekarang (Tahap
-                                {{ item.election.current_stage }})</span
-                            >
-                            <ArrowRight class="h-4 w-4" />
-                        </Link>
-
-                        <!-- Already Voted -->
-                        <div
-                            v-else-if="item.is_voted"
-                            class="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        >
-                            <span class="flex items-center gap-1.5 font-bold">
-                                <CheckCircle2
-                                    class="h-4 w-4 shrink-0 text-emerald-600"
-                                />
-                                <span>Suara Sudah Terdaftar</span>
-                            </span>
+                        <!-- SIMULATION MODE ACTIONS -->
+                        <template v-if="item.election.is_simulation">
                             <Link
-                                v-if="item.election.is_published"
-                                :href="`/hasil/${item.election.id}`"
-                                class="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                                v-if="
+                                    item.election.simulation_status ===
+                                        'ongoing' && !item.is_simulation_voted
+                                "
+                                :href="`/vote/${item.election.id}`"
+                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-amber-700"
                             >
-                                Hasil
+                                <FlaskConical class="h-4 w-4" />
+                                <span
+                                    >Ikuti Uji Coba Simulasi (Tahap
+                                    {{ item.election.current_stage }})</span
+                                >
+                                <ArrowRight class="h-4 w-4" />
                             </Link>
-                        </div>
 
-                        <!-- Finished & Published -->
-                        <Link
-                            v-else-if="
-                                item.election.status === 'finished' &&
-                                item.election.is_published
-                            "
-                            :href="`/hasil/${item.election.id}`"
-                            class="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-900"
-                        >
-                            <BarChart3 class="h-4 w-4 text-amber-400" />
-                            <span>Lihat Hasil Pemilihan</span>
-                        </Link>
-
-                        <!-- Upcoming -->
-                        <div
-                            v-else-if="item.election.status === 'upcoming'"
-                            class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
-                        >
-                            <Clock class="h-4 w-4 shrink-0 text-amber-600" />
-                            <span
-                                >Dimulai
-                                {{ formatDate(item.election.start_at) }}</span
+                            <div
+                                v-else-if="item.is_simulation_voted"
+                                class="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
                             >
-                        </div>
+                                <span
+                                    class="flex items-center gap-1.5 font-bold"
+                                >
+                                    <CheckCircle2
+                                        class="h-4 w-4 shrink-0 text-emerald-600"
+                                    />
+                                    <span>Sudah Mengikuti Simulasi</span>
+                                </span>
+                            </div>
+
+                            <div
+                                v-else-if="
+                                    item.election.simulation_status ===
+                                    'upcoming'
+                                "
+                                class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                            >
+                                <Clock
+                                    class="h-4 w-4 shrink-0 text-amber-600"
+                                />
+                                <span
+                                    >Sesi simulasi belum dibuka oleh
+                                    panitia.</span
+                                >
+                            </div>
+
+                            <div
+                                v-else
+                                class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                                <Clock
+                                    class="h-4 w-4 shrink-0 text-slate-400"
+                                />
+                                <span>Sesi simulasi telah selesai.</span>
+                            </div>
+                        </template>
+
+                        <!-- REGULAR PRODUCTION ELECTIONS -->
+                        <template v-else>
+                            <!-- Ongoing & Not Voted -->
+                            <Link
+                                v-if="
+                                    item.election.status === 'ongoing' &&
+                                    !item.is_voted
+                                "
+                                :href="`/vote/${item.election.id}`"
+                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
+                            >
+                                <Vote class="h-4 w-4" />
+                                <span
+                                    >Pilih Sekarang (Tahap
+                                    {{ item.election.current_stage }})</span
+                                >
+                                <ArrowRight class="h-4 w-4" />
+                            </Link>
+
+                            <!-- Already Voted -->
+                            <div
+                                v-else-if="item.is_voted"
+                                class="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            >
+                                <span
+                                    class="flex items-center gap-1.5 font-bold"
+                                >
+                                    <CheckCircle2
+                                        class="h-4 w-4 shrink-0 text-emerald-600"
+                                    />
+                                    <span>Suara Sudah Terdaftar</span>
+                                </span>
+                                <Link
+                                    v-if="item.election.is_published"
+                                    :href="`/hasil/${item.election.id}`"
+                                    class="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                                >
+                                    Hasil
+                                </Link>
+                            </div>
+
+                            <!-- Finished & Published -->
+                            <Link
+                                v-else-if="
+                                    item.election.status === 'finished' &&
+                                    item.election.is_published
+                                "
+                                :href="`/hasil/${item.election.id}`"
+                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-900"
+                            >
+                                <BarChart3 class="h-4 w-4 text-amber-400" />
+                                <span>Lihat Hasil Pemilihan</span>
+                            </Link>
+
+                            <!-- Upcoming -->
+                            <div
+                                v-else-if="item.election.status === 'upcoming'"
+                                class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                            >
+                                <Clock
+                                    class="h-4 w-4 shrink-0 text-amber-600"
+                                />
+                                <span>Pemilihan belum dimulai.</span>
+                            </div>
+
+                            <!-- Finished & Unpublish -->
+                            <div
+                                v-else
+                                class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                                <Clock
+                                    class="h-4 w-4 shrink-0 text-slate-400"
+                                />
+                                <span
+                                    >Pemilihan telah selesai. Menunggu hasil
+                                    dipublikasikan oleh panitia.</span
+                                >
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -260,7 +405,7 @@
 </template>
 
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link } from "@inertiajs/vue3";
 import {
     Vote,
     CheckCircle2,
@@ -269,8 +414,9 @@ import {
     ArrowRight,
     Layers,
     Trophy,
-} from '@lucide/vue';
-import VoterLayout from '@/Layouts/VoterLayout.vue';
+    FlaskConical,
+} from "@lucide/vue";
+import VoterLayout from "@/Layouts/VoterLayout.vue";
 
 defineProps<{
     user: {
@@ -283,13 +429,13 @@ defineProps<{
 }>();
 
 const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
+    if (!dateStr) return "";
     const d = new Date(dateStr);
-    return d.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
+    return d.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
     });
 };
 </script>

@@ -26,6 +26,9 @@ class ElectionEvote extends Model
         'end_at',
         'is_published',
         'is_multi_stage',
+        'is_simulation',
+        'simulation_start_at',
+        'simulation_end_at',
         'max_votes_per_voter',
         'current_stage',
         'total_stages',
@@ -35,15 +38,18 @@ class ElectionEvote extends Model
     protected $casts = [
         'start_at' => 'datetime',
         'end_at' => 'datetime',
+        'simulation_start_at' => 'datetime',
+        'simulation_end_at' => 'datetime',
         'is_published' => 'boolean',
         'is_multi_stage' => 'boolean',
+        'is_simulation' => 'boolean',
         'max_votes_per_voter' => 'integer',
         'current_stage' => 'integer',
         'total_stages' => 'integer',
         'stage_schedules' => 'array',
     ];
 
-    protected $appends = ['status'];
+    protected $appends = ['status', 'simulation_status'];
 
     /**
      * Compute dynamic election status based on timestamps.
@@ -57,6 +63,32 @@ class ElectionEvote extends Model
         }
 
         if ($now->gte($this->start_at) && $now->lte($this->end_at)) {
+            return 'ongoing';
+        }
+
+        return 'finished';
+    }
+
+    /**
+     * Compute dynamic simulation status based on simulation timestamps.
+     */
+    public function getSimulationStatusAttribute(): string
+    {
+        if (! $this->is_simulation) {
+            return 'inactive';
+        }
+
+        $now = now();
+
+        if (! $this->simulation_start_at || ! $this->simulation_end_at) {
+            return 'ongoing';
+        }
+
+        if ($now->lt($this->simulation_start_at)) {
+            return 'upcoming';
+        }
+
+        if ($now->gte($this->simulation_start_at) && $now->lte($this->simulation_end_at)) {
             return 'ongoing';
         }
 

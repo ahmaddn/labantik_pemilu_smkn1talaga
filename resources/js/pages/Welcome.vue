@@ -115,6 +115,13 @@
                         <template v-if="featuredActiveElection">
                             <div class="space-y-2">
                                 <span
+                                    v-if="featuredActiveElection.is_simulation"
+                                    class="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-900 uppercase dark:bg-amber-950 dark:text-amber-300"
+                                >
+                                    GLADI / SIMULASI TERBUKA
+                                </span>
+                                <span
+                                    v-else
                                     class="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 uppercase dark:bg-blue-950 dark:text-blue-300"
                                 >
                                     Sedang Berlangsung
@@ -135,7 +142,7 @@
                             <!-- Quick Timer Widget -->
                             <CountdownTimer
                                 :target-date="featuredActiveElection.end_at"
-                                label="Sisa Waktu Pemilihan"
+                                :label="featuredActiveElection.is_simulation ? 'Sisa Waktu Sesi Simulasi' : 'Sisa Waktu Pemilihan'"
                                 class="origin-left scale-95"
                             />
 

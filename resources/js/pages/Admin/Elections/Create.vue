@@ -279,6 +279,63 @@
                         </div>
                     </div>
 
+                    <!-- Mode Simulasi (Gladi Pemilihan dengan Nama Kandidat Disamarkan) -->
+                    <div
+                        class="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/40"
+                    >
+                        <label
+                            class="flex cursor-pointer items-start gap-3 select-none"
+                        >
+                            <input
+                                type="checkbox"
+                                v-model="form.is_simulation"
+                                class="mt-0.5 h-4 w-4 cursor-pointer rounded text-amber-600 focus:ring-amber-500"
+                            />
+                            <div>
+                                <span
+                                    class="block text-xs font-bold text-amber-900 dark:text-amber-200"
+                                    >Buka Sebagai Sesi Simulasi / Gladi Pemilihan</span
+                                >
+                                <span
+                                    class="block text-[11px] text-amber-700/80 dark:text-amber-300/80"
+                                    >Saat mode simulasi aktif, <strong>nama kandidat otomatis disamarkan</strong> (Kandidat A, Kandidat B, dst.) bagi pemilih. Suara pemilih tersimpan terpisah di sandbox simulasi tanpa merusak data pemilu asli.</span
+                                >
+                            </div>
+                        </label>
+
+                        <!-- Jadwal Waktu Khusus Simulasi (Opsional) -->
+                        <div
+                            v-if="form.is_simulation"
+                            class="space-y-3 border-t border-amber-200/60 pt-3 dark:border-amber-900/50"
+                        >
+                            <span class="block text-[11px] font-bold text-amber-900 dark:text-amber-200">
+                                Jadwal Waktu Sesi Simulasi (Opsional - default mengikuti waktu pemilihan jika dikosongkan):
+                            </span>
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div class="space-y-1">
+                                    <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                        Mulai Simulasi:
+                                    </label>
+                                    <input
+                                        v-model="form.simulation_start_at"
+                                        type="datetime-local"
+                                        class="w-full rounded-xl border border-amber-300 bg-white p-2.5 text-xs text-slate-900 dark:border-amber-800 dark:bg-slate-900 dark:text-white"
+                                    />
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                        Selesai Simulasi:
+                                    </label>
+                                    <input
+                                        v-model="form.simulation_end_at"
+                                        type="datetime-local"
+                                        class="w-full rounded-xl border border-amber-300 bg-white p-2.5 text-xs text-slate-900 dark:border-amber-800 dark:bg-slate-900 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Submit Bar -->
                     <div
                         class="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700"
@@ -327,6 +384,9 @@ const form = useForm({
     start_at: "",
     end_at: "",
     is_multi_stage: false,
+    is_simulation: false,
+    simulation_start_at: "",
+    simulation_end_at: "",
     max_votes_per_voter: 1,
     total_stages: 2,
 });

@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/pemilihan/{election}', [ElectionController::class, 'update'])->name('elections.update');
         Route::delete('/pemilihan/{election}', [ElectionController::class, 'destroy'])->name('elections.destroy');
         Route::post('/pemilihan/{election}/toggle-publish', [ElectionController::class, 'togglePublish'])->name('elections.toggle-publish');
+        Route::post('/pemilihan/{election}/toggle-simulation', [ElectionController::class, 'toggleSimulation'])->name('elections.toggle-simulation');
         Route::get('/pemilihan/{election}/hasil', [ResultController::class, 'show'])->name('elections.results');
         Route::post('/pemilihan/{election}/advance-stage', [ResultController::class, 'advanceStage'])->name('elections.advance-stage');
         Route::post('/pemilihan/{election}/reset-stages', [ResultController::class, 'resetStages'])->name('elections.reset-stages');

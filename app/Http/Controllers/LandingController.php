@@ -13,39 +13,66 @@ class LandingController extends Controller
         $now = now();
 
         $activeElections = ElectionEvote::withCount(['candidates', 'voterAccesses'])
-            ->where('start_at', '<=', $now)
-            ->where('end_at', '>=', $now)
-            ->orderBy('start_at', 'asc')
             ->get()
+            ->filter(function ($election) use ($now) {
+                if ($election->is_simulation) {
+                    return $election->simulation_status === 'ongoing';
+                }
+
+                return $now->gte($election->start_at) && $now->lte($election->end_at);
+            })
+            ->values()
             ->map(function ($election) {
+                $isSimulation = (bool) $election->is_simulation;
+                $start = $isSimulation && $election->simulation_start_at ? $election->simulation_start_at : $election->start_at;
+                $end = $isSimulation && $election->simulation_end_at ? $election->simulation_end_at : $election->end_at;
+
                 return [
                     'id' => $election->id,
-                    'title' => $election->title,
-                    'description' => $election->description,
+                    'title' => $isSimulation ? "[SIMULASI] {$election->title}" : $election->title,
+                    'description' => $isSimulation
+                        ? 'Sesi simulasi / gladi voting sedang dibuka. Nama kandidat disamarkan.'
+                        : $election->description,
                     'type' => $election->type,
-                    'start_at' => $election->start_at->toIso8601String(),
-                    'end_at' => $election->end_at->toIso8601String(),
+                    'is_simulation' => $isSimulation,
+                    'simulation_status' => $election->simulation_status,
+                    'start_at' => $start->toIso8601String(),
+                    'end_at' => $end->toIso8601String(),
                     'candidates_count' => $election->candidates_count,
                     'voters_count' => $election->voter_accesses_count,
-                    'status' => $election->status,
+                    'status' => $isSimulation ? 'ongoing' : $election->status,
                 ];
             });
 
         $upcomingElections = ElectionEvote::withCount(['candidates', 'voterAccesses'])
-            ->where('start_at', '>', $now)
-            ->orderBy('start_at', 'asc')
             ->get()
+            ->filter(function ($election) use ($now) {
+                if ($election->is_simulation) {
+                    return $election->simulation_status === 'upcoming';
+                }
+
+                return $now->lt($election->start_at);
+            })
+            ->values()
             ->map(function ($election) {
+                $isSimulation = (bool) $election->is_simulation;
+                $start = $isSimulation && $election->simulation_start_at ? $election->simulation_start_at : $election->start_at;
+                $end = $isSimulation && $election->simulation_end_at ? $election->simulation_end_at : $election->end_at;
+
                 return [
                     'id' => $election->id,
-                    'title' => $election->title,
-                    'description' => $election->description,
+                    'title' => $isSimulation ? "[SIMULASI] {$election->title}" : $election->title,
+                    'description' => $isSimulation
+                        ? 'Jadwal gladi / simulasi pemilihan dengan kandidat tersamar.'
+                        : $election->description,
                     'type' => $election->type,
-                    'start_at' => $election->start_at->toIso8601String(),
-                    'end_at' => $election->end_at->toIso8601String(),
+                    'is_simulation' => $isSimulation,
+                    'simulation_status' => $election->simulation_status,
+                    'start_at' => $start->toIso8601String(),
+                    'end_at' => $end->toIso8601String(),
                     'candidates_count' => $election->candidates_count,
                     'voters_count' => $election->voter_accesses_count,
-                    'status' => $election->status,
+                    'status' => 'upcoming',
                 ];
             });
 

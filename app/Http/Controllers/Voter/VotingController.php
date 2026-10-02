@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Voter;
 use App\Http\Controllers\Controller;
 use App\Models\CandidateEvote;
 use App\Models\ElectionEvote;
+use App\Models\SimulationVote;
 use App\Models\VoteEvote;
 use App\Models\VoterAccessEvote;
 use Illuminate\Http\RedirectResponse;
@@ -26,8 +27,19 @@ class VotingController extends Controller
             $query->where('is_qualified', true)->orderBy('candidate_number', 'asc');
         }])->findOrFail($electionId);
 
-        if ($election->status !== 'ongoing') {
-            return redirect()->route('voter.dashboard')->with('error', 'Pemilihan ini belum dimulai atau telah berakhir.');
+        $isSimulationMode = (bool) $election->is_simulation;
+
+        if ($isSimulationMode) {
+            if ($election->simulation_status === 'upcoming') {
+                return redirect()->route('voter.dashboard')->with('error', 'Sesi simulasi pemilihan ini belum dimulai.');
+            }
+            if ($election->simulation_status === 'finished') {
+                return redirect()->route('voter.dashboard')->with('error', 'Sesi simulasi pemilihan ini telah berakhir.');
+            }
+        } else {
+            if ($election->status !== 'ongoing') {
+                return redirect()->route('voter.dashboard')->with('error', 'Pemilihan ini belum dimulai atau telah berakhir.');
+            }
         }
 
         $currentStage = $election->current_stage;
@@ -41,55 +53,90 @@ class VotingController extends Controller
             return redirect()->route('voter.dashboard')->with('error', 'Anda tidak memiliki hak pilih dalam pemilihan ini.');
         }
 
-        // Get or create voter access for current stage
-        $access = VoterAccessEvote::firstOrCreate([
-            'user_id' => $user->id,
-            'election_id' => $electionId,
-            'stage_number' => $currentStage,
-        ], [
-            'is_voted' => false,
-            'voted_at' => null,
-        ]);
+        // Check if voter already voted (Simulation votes or Real votes)
+        if ($isSimulationMode) {
+            $hasVotedSimulation = SimulationVote::where('election_id', $electionId)
+                ->where('user_id', $user->id)
+                ->where('stage', $currentStage)
+                ->exists();
 
-        if ($access->is_voted) {
-            $stageInfo = $election->is_multi_stage ? " (Tahap {$currentStage})" : '';
+            if ($hasVotedSimulation) {
+                $stageInfo = $election->is_multi_stage ? " (Tahap {$currentStage})" : '';
 
-            return redirect()->route('voter.dashboard')->with('info', "Anda sudah memberikan suara dalam pemilihan ini{$stageInfo}.");
+                return redirect()->route('voter.dashboard')->with('info', "Anda sudah memberikan suara simulasi dalam uji coba ini{$stageInfo}.");
+            }
+        } else {
+            // Get or create voter access for current stage
+            $access = VoterAccessEvote::firstOrCreate([
+                'user_id' => $user->id,
+                'election_id' => $electionId,
+                'stage_number' => $currentStage,
+            ], [
+                'is_voted' => false,
+                'voted_at' => null,
+            ]);
+
+            if ($access->is_voted) {
+                $stageInfo = $election->is_multi_stage ? " (Tahap {$currentStage})" : '';
+
+                return redirect()->route('voter.dashboard')->with('info', "Anda sudah memberikan suara dalam pemilihan ini{$stageInfo}.");
+            }
         }
+
+        // Candidate data mapping with masking if simulation mode is active
+        $alphabet = range('A', 'Z');
+        $candidates = $election->candidates->values()->map(function ($candidate, $index) use ($isSimulationMode, $alphabet) {
+            $aliasLetter = $alphabet[$index % count($alphabet)];
+
+            return [
+                'id' => $candidate->id,
+                'candidate_number' => $candidate->candidate_number,
+                'chairman_name' => $isSimulationMode ? "Kandidat {$aliasLetter} (Simulasi)" : $candidate->chairman_name,
+                'vice_chairman_name' => $isSimulationMode ? ($candidate->vice_chairman_name ? "Wakil {$aliasLetter} (Simulasi)" : null) : $candidate->vice_chairman_name,
+                'photo' => $isSimulationMode ? null : $candidate->photo,
+                'vision_mission' => $isSimulationMode ? 'Visi & Misi disamarkan untuk keperluan gladi/simulasi sistem pemilihan.' : $candidate->vision_mission,
+            ];
+        });
+
+        $effectiveEndTime = $isSimulationMode && $election->simulation_end_at
+            ? $election->simulation_end_at->toIso8601String()
+            : $election->end_at->toIso8601String();
 
         return Inertia::render('Voter/VoteWizard', [
             'election' => [
                 'id' => $election->id,
-                'title' => $election->title,
-                'description' => $election->description,
+                'title' => $isSimulationMode ? "[SIMULASI] {$election->title}" : $election->title,
+                'description' => $isSimulationMode
+                    ? 'Ini adalah mode gladi / simulasi. Nama dan identitas paslon disamarkan untuk menguji kelancaran sistem pemilihan.'
+                    : $election->description,
                 'type' => $election->type,
                 'is_multi_stage' => $election->is_multi_stage,
+                'is_simulation' => $isSimulationMode,
                 'max_votes_per_voter' => $election->max_votes_per_voter ?? 1,
                 'current_stage' => $election->current_stage,
                 'total_stages' => $election->total_stages,
-                'end_at' => $election->end_at->toIso8601String(),
-                'candidates' => $election->candidates->map(function ($candidate) {
-                    return [
-                        'id' => $candidate->id,
-                        'candidate_number' => $candidate->candidate_number,
-                        'chairman_name' => $candidate->chairman_name,
-                        'vice_chairman_name' => $candidate->vice_chairman_name,
-                        'photo' => $candidate->photo,
-                        'vision_mission' => $candidate->vision_mission,
-                    ];
-                }),
+                'end_at' => $effectiveEndTime,
+                'candidates' => $candidates,
             ],
         ]);
     }
 
     /**
-     * Submit vote using atomic SQL update to prevent race conditions.
+     * Submit vote using atomic SQL update or simulation vote sandbox.
      */
     public function vote(Request $request, string $electionId): RedirectResponse
     {
         $election = ElectionEvote::findOrFail($electionId);
-        if ($election->status !== 'ongoing') {
-            return back()->withErrors(['vote' => 'Pemilihan sudah berakhir atau belum dimulai.']);
+        $isSimulationMode = (bool) $election->is_simulation;
+
+        if ($isSimulationMode) {
+            if ($election->simulation_status !== 'ongoing') {
+                return back()->withErrors(['vote' => 'Sesi simulasi pemilihan sedang tidak aktif atau sudah berakhir.']);
+            }
+        } else {
+            if ($election->status !== 'ongoing') {
+                return back()->withErrors(['vote' => 'Pemilihan sudah berakhir atau belum dimulai.']);
+            }
         }
 
         $maxVotes = $election->max_votes_per_voter ?? 1;
@@ -129,6 +176,33 @@ class VotingController extends Controller
             return back()->withErrors(['vote' => 'Satu atau lebih kandidat yang dipilih tidak valid atau sudah tereliminasi.']);
         }
 
+        // SIMULATION MODE VOTING
+        if ($isSimulationMode) {
+            $hasVotedSimulation = SimulationVote::where('election_id', $electionId)
+                ->where('user_id', $userId)
+                ->where('stage', $currentStage)
+                ->exists();
+
+            if ($hasVotedSimulation) {
+                return redirect()->route('voter.dashboard')->with('error', "Hak suara simulasi Anda untuk Tahap {$currentStage} ini sudah digunakan.");
+            }
+
+            foreach ($candidateIds as $candId) {
+                SimulationVote::create([
+                    'election_id' => $electionId,
+                    'user_id' => $userId,
+                    'candidate_id' => $candId,
+                    'stage' => $currentStage,
+                    'voter_alias' => auth()->user()->name ?? 'Pemilih Simulasi',
+                ]);
+            }
+
+            $stageMsg = $election->is_multi_stage ? " (Tahap {$currentStage})" : '';
+
+            return redirect()->route('voter.dashboard')->with('success', "Suara simulasi Anda{$stageMsg} berhasil dicatat! Data simulasi tidak memengaruhi hasil resmi.");
+        }
+
+        // OFFICIAL VOTING (PRODUCTION)
         // Ensure voter access record exists for current stage
         VoterAccessEvote::firstOrCreate([
             'user_id' => $userId,

@@ -35,21 +35,34 @@
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    :disabled="isGenerating"
-                    @click="generateBatch"
-                    class="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-50"
-                >
-                    <RefreshCw
-                        :class="['h-4 w-4', isGenerating ? 'animate-spin' : '']"
-                    />
-                    <span>{{
-                        isGenerating
-                            ? 'Memproses Access...'
-                            : 'Generate Akses Pemilih Massal'
-                    }}</span>
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        v-if="stats.total_access > 0"
+                        type="button"
+                        :disabled="isDeletingAll"
+                        @click="showDeleteAllConfirm = true"
+                        class="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-50 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/50 cursor-pointer"
+                    >
+                        <Trash2 class="h-3.5 w-3.5" />
+                        <span>{{ isDeletingAll ? 'Menghapus...' : 'Hapus Semua' }}</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        :disabled="isGenerating"
+                        @click="generateBatch"
+                        class="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                    >
+                        <RefreshCw
+                            :class="['h-4 w-4', isGenerating ? 'animate-spin' : '']"
+                        />
+                        <span>{{
+                            isGenerating
+                                ? 'Memproses Access...'
+                                : 'Generate Akses Pemilih Massal'
+                        }}</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Stats Pill Bar -->
@@ -263,6 +276,18 @@
                 </div>
             </div>
 
+            <!-- Delete All Voter Access Confirm Modal -->
+            <ConfirmModal
+                :show="showDeleteAllConfirm"
+                title="Hapus Semua Hak Pilih"
+                message="Apakah Anda yakin ingin menghapus SEMUA data hak pilih untuk pemilihan ini? (Pemilih yang sudah menggunakan hak suaranya tidak akan terhapus demi menjaga keabsahan data)."
+                type="danger"
+                confirm-text="Ya, Hapus Semua"
+                cancel-text="Batal"
+                @confirm="confirmDeleteAll"
+                @cancel="showDeleteAllConfirm = false"
+            />
+
             <!-- Batch Generate Confirm Modal -->
             <ConfirmModal
                 :show="showBatchConfirm"
@@ -329,8 +354,10 @@ const props = defineProps<{
 }>();
 
 const isGenerating = ref(false);
+const isDeletingAll = ref(false);
 const showBatchConfirm = ref(false);
 const showDeleteConfirm = ref(false);
+const showDeleteAllConfirm = ref(false);
 const selectedAccessToDelete = ref<any | null>(null);
 
 const searchQuery = ref(props.filters?.search || '');
@@ -386,6 +413,16 @@ const confirmDeleteAccess = () => {
         );
     }
     showDeleteConfirm.value = false;
+};
+
+const confirmDeleteAll = () => {
+    showDeleteAllConfirm.value = false;
+    isDeletingAll.value = true;
+    router.delete(`/admin/pemilihan/${props.election.id}/pemilih-semua`, {
+        onFinish: () => {
+            isDeletingAll.value = false;
+        },
+    });
 };
 
 const formatDate = (dateStr: string | null) => {

@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function () {
         // Voter Access Management
         Route::get('/pemilihan/{election}/pemilih', [VoterAccessController::class, 'index'])->name('voters.index');
         Route::post('/pemilihan/{election}/generate-pemilih', [VoterAccessController::class, 'generateBatch'])->name('voters.generate');
+        Route::delete('/pemilihan/{election}/pemilih-semua', [VoterAccessController::class, 'destroyAll'])->name('voters.destroy-all');
         Route::delete('/pemilihan/{election}/pemilih/{access}', [VoterAccessController::class, 'destroy'])->name('voters.destroy');
 
         // Application Settings

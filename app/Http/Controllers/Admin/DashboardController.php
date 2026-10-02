@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ElectionEvote;
-use App\Models\Employee;
 use App\Models\Student;
 use App\Models\VoteEvote;
 use Illuminate\Support\Facades\DB;
@@ -22,14 +21,31 @@ class DashboardController extends Controller
             $q->where('is_active', true);
         })->count();
 
-        // 2. Hitung Guru & Staf (sama persis dengan kriteria generate akses pemilih guru)
-        $teacherUserIdsEmp = Employee::whereNotNull('user_id')->pluck('user_id')->toArray();
-        $teacherUserIdsRole = DB::table('core_users')
-            ->where('role', 'guru')
-            ->where('is_active', true)
-            ->pluck('id')
+        // 2. Hitung Guru (HANYA role 'Guru' yang aktif, tanpa tendik, kepsek, kurikulum, kesiswaan, superadmin, atau siswa)
+        $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
+
+        $excludedUserIds = DB::table('assoc_user_roles')
+            ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
+            ->whereIn('core_roles.name', $excludedRoleNames)
+            ->pluck('assoc_user_roles.user_id')
+            ->unique()
             ->toArray();
-        $totalTeachers = count(array_unique(array_filter(array_merge($teacherUserIdsEmp, $teacherUserIdsRole))));
+
+        $studentIdsToExclude = DB::table('ref_students')
+            ->whereNotNull('user_id')
+            ->pluck('user_id')
+            ->toArray();
+
+        $allExcludes = array_unique(array_merge($excludedUserIds, $studentIdsToExclude));
+
+        $totalTeachers = DB::table('assoc_user_roles')
+            ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
+            ->join('core_users', 'assoc_user_roles.user_id', '=', 'core_users.id')
+            ->where('core_roles.name', 'Guru')
+            ->where('core_users.is_active', true)
+            ->whereNotIn('assoc_user_roles.user_id', $allExcludes)
+            ->distinct()
+            ->count('assoc_user_roles.user_id');
 
         $totalVotesCast = VoteEvote::count();
 

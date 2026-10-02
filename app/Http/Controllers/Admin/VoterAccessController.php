@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ElectionEvote;
-use App\Models\Employee;
 use App\Models\StudentAcademicYear;
 use App\Models\VoterAccessEvote;
 use Illuminate\Http\RedirectResponse;
@@ -47,7 +46,10 @@ class VoterAccessController extends Controller
             });
         }
 
-        $voterAccesses = $query->orderBy('created_at', 'desc')
+        $voterAccesses = $query->join('core_users', 'voter_accesses_evote.user_id', '=', 'core_users.id')
+            ->select('voter_accesses_evote.*')
+            ->orderBy('core_users.name', 'asc')
+            ->orderBy('voter_accesses_evote.id', 'asc')
             ->paginate(25)
             ->withQueryString()
             ->through(function ($access) {
@@ -146,34 +148,34 @@ class VoterAccessController extends Controller
             $userIds = array_merge($userIds, $studentUserIds);
         }
 
-        // 2. Fetch eligible teacher user_ids (from core_employees, assoc_user_roles, and core_users role = 'guru')
+        // 2. Fetch eligible teacher user_ids (MURNI hanya role 'Guru' aktif, dan BUKAN tendik, kepsek, kurikulum, kesiswaan, atau siswa)
         if (in_array($targetVoter, ['all', 'teacher'], true)) {
-            $teacherUserIdsEmp = Employee::whereNotNull('user_id')
+            $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
+
+            $excludedUserIds = DB::table('assoc_user_roles')
+                ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
+                ->whereIn('core_roles.name', $excludedRoleNames)
+                ->pluck('assoc_user_roles.user_id')
+                ->unique()
+                ->toArray();
+
+            $studentIdsToExclude = DB::table('ref_students')
+                ->whereNotNull('user_id')
                 ->pluck('user_id')
                 ->toArray();
 
-            $teacherUserIdsAssoc = DB::table('assoc_user_roles')
+            $allExcludes = array_unique(array_merge($excludedUserIds, $studentIdsToExclude));
+
+            $teacherUserIds = DB::table('assoc_user_roles')
                 ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                ->where(function ($query) {
-                    $query->where('core_roles.name', 'LIKE', '%Guru%')
-                        ->orWhere('core_roles.name', 'LIKE', '%Wali Kelas%')
-                        ->orWhere('core_roles.name', 'LIKE', '%Kurikulum%')
-                        ->orWhere('core_roles.name', 'LIKE', '%Kepala Sekolah%')
-                        ->orWhere('core_roles.name', 'LIKE', '%Kesiswaan%')
-                        ->orWhere('core_roles.name', 'LIKE', '%Tenaga Kependidikan%')
-                        ->orWhere('core_roles.name', 'LIKE', '%Pembina%')
-                        ->orWhere('core_roles.name', 'LIKE', '%Kaprog%');
-                })
+                ->join('core_users', 'assoc_user_roles.user_id', '=', 'core_users.id')
+                ->where('core_roles.name', 'Guru')
+                ->where('core_users.is_active', true)
+                ->whereNotIn('assoc_user_roles.user_id', $allExcludes)
+                ->distinct()
                 ->pluck('assoc_user_roles.user_id')
                 ->toArray();
 
-            $teacherUserIdsRole = DB::table('core_users')
-                ->where('role', 'guru')
-                ->where('is_active', true)
-                ->pluck('id')
-                ->toArray();
-
-            $teacherUserIds = array_unique(array_merge($teacherUserIdsEmp, $teacherUserIdsAssoc, $teacherUserIdsRole));
             $userIds = array_merge($userIds, $teacherUserIds);
         }
 
@@ -190,9 +192,16 @@ class VoterAccessController extends Controller
             ->whereNotIn('user_id', $userIds)
             ->delete();
 
+        // Ambil user_id yang SUDAH terdaftar di pemilihan ini agar tidak dibuat ulang
+        $existingUserIds = VoterAccessEvote::where('election_id', $electionId)
+            ->pluck('user_id')
+            ->toArray();
+
+        $newUserIds = array_diff($userIds, $existingUserIds);
+
         $now = now();
         $records = [];
-        foreach ($userIds as $userId) {
+        foreach ($newUserIds as $userId) {
             $records[] = [
                 'id' => (string) Str::uuid(),
                 'election_id' => $electionId,
@@ -213,6 +222,19 @@ class VoterAccessController extends Controller
         }
 
         return back()->with('success', "Berhasil menyinkronkan hak akses pemilih untuk {$countInserted} akun!");
+    }
+
+    /**
+     * Delete all voter accesses for an election that haven't voted yet (or all if confirmed).
+     */
+    public function destroyAll(string $electionId): RedirectResponse
+    {
+        // Hapus pemilih yang belum memilih untuk menjaga integritas suara yang sudah masuk
+        $deletedCount = VoterAccessEvote::where('election_id', $electionId)
+            ->where('is_voted', false)
+            ->delete();
+
+        return back()->with('success', "Berhasil menghapus {$deletedCount} data hak pilih pemilih.");
     }
 
     /**

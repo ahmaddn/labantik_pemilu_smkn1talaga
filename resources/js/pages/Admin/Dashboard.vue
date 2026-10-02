@@ -81,7 +81,7 @@
                     <div class="space-y-1">
                         <span
                             class="text-xs font-bold tracking-wider text-slate-500 uppercase dark:text-slate-400"
-                            >Guru & Staf</span
+                            >Guru Terdaftar</span
                         >
                         <span
                             class="block text-2xl font-black text-slate-900 dark:text-white"

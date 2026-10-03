@@ -10,6 +10,7 @@ use App\Models\VoterAccessEvote;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -194,6 +195,38 @@ class ResultController extends Controller
         }
 
         $election->save();
+
+        // Siapkan hak akses pemilih untuk tahap baru dari semua pemilih yang memiliki hak pilih dasar
+        $baseVoterUserIds = VoterAccessEvote::where('election_id', $electionId)
+            ->pluck('user_id')
+            ->unique();
+
+        $existingStageUserIds = VoterAccessEvote::where('election_id', $electionId)
+            ->where('stage_number', $nextStage)
+            ->pluck('user_id')
+            ->toArray();
+
+        $missingUserIds = $baseVoterUserIds->diff($existingStageUserIds);
+
+        if ($missingUserIds->isNotEmpty()) {
+            $records = [];
+            $nowTimestamp = now();
+            foreach ($missingUserIds as $uId) {
+                $records[] = [
+                    'id' => (string) Str::uuid(),
+                    'election_id' => $electionId,
+                    'user_id' => $uId,
+                    'stage_number' => $nextStage,
+                    'is_voted' => false,
+                    'voted_at' => null,
+                    'created_at' => $nowTimestamp,
+                    'updated_at' => $nowTimestamp,
+                ];
+            }
+            foreach (array_chunk($records, 500) as $chunk) {
+                VoterAccessEvote::insert($chunk);
+            }
+        }
 
         return redirect("/admin/pemilihan/{$electionId}/hasil?stage={$nextStage}")
             ->with('success', "Berhasil menyaring {$qualifiersCount} kandidat ke Tahap {$nextStage} dan memperbarui jadwal waktu!");

@@ -59,6 +59,8 @@ Route::middleware('auth')->group(function () {
 
         // Candidate Management
         Route::get('/pemilihan/{election}/kandidat', [CandidateController::class, 'index'])->name('candidates.index');
+        Route::get('/pemilihan/{election}/kandidat/template', [CandidateController::class, 'downloadTemplate'])->name('candidates.template');
+        Route::post('/pemilihan/{election}/kandidat/import', [CandidateController::class, 'import'])->name('candidates.import');
         Route::get('/pemilihan/{election}/kandidat/create', [CandidateController::class, 'create'])->name('candidates.create');
         Route::post('/pemilihan/{election}/kandidat', [CandidateController::class, 'store'])->name('candidates.store');
         Route::get('/pemilihan/{election}/kandidat/{candidate}/edit', [CandidateController::class, 'edit'])->name('candidates.edit');

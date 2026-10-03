@@ -10,8 +10,10 @@ use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CandidateController extends Controller
 {
@@ -180,5 +182,130 @@ class CandidateController extends Controller
         $candidate->delete();
 
         return back()->with('success', 'Kandidat berhasil dihapus!');
+    }
+
+    /**
+     * Download CSV template for candidate import.
+     */
+    public function downloadTemplate(string $electionId): StreamedResponse
+    {
+        $election = ElectionEvote::findOrFail($electionId);
+        $cleanTitle = Str::slug($election->title, '_');
+        $fileName = "template_import_kandidat_{$cleanTitle}.csv";
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+            // Write UTF-8 BOM so Excel opens it with proper encoding
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            // Header row
+            fputcsv($handle, ['Nomor Urut', 'Nama Ketua', 'Nama Wakil', 'Visi & Misi']);
+
+            // Example rows
+            fputcsv($handle, [1, 'Ahmad Fauzi', 'Siti Rahmawati', 'Visi: Mewujudkan sekolah inovatif. Misi: 1. Kolaborasi siswa, 2. Fasilitas terbuka.']);
+            fputcsv($handle, [2, 'Budi Santoso', 'Dewi Lestari', 'Visi: Disiplin dan berprestasi. Misi: Mengembangkan bakat minat siswa.']);
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
+
+    /**
+     * Import candidate list from CSV / Excel file.
+     */
+    public function import(Request $request, string $electionId): RedirectResponse
+    {
+        $election = ElectionEvote::findOrFail($electionId);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120'], // 5MB max
+        ]);
+
+        $uploadedFile = $request->file('file');
+        $path = $uploadedFile->getRealPath();
+
+        $rows = [];
+        if (($handle = fopen($path, 'r')) !== false) {
+            // Strip possible UTF-8 BOM
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") {
+                rewind($handle);
+            }
+
+            while (($data = fgetcsv($handle, 4096, ',')) !== false) {
+                // If single column detected, try semicolon delimiter
+                if (count($data) === 1 && str_contains($data[0], ';')) {
+                    $data = str_getcsv($data[0], ';');
+                }
+                $rows[] = $data;
+            }
+            fclose($handle);
+        }
+
+        if (empty($rows)) {
+            return back()->with('error', 'File yang diunggah kosong atau format data tidak dapat dibaca.');
+        }
+
+        // Header detection (skip first row if it contains headers like 'nomor', 'ketua', etc.)
+        $startIndex = 0;
+        $firstRowText = strtolower(implode(' ', $rows[0]));
+        if (str_contains($firstRowText, 'nomor') || str_contains($firstRowText, 'ketua') || str_contains($firstRowText, 'nama')) {
+            $startIndex = 1;
+        }
+
+        $importedCount = 0;
+        $errors = [];
+
+        for ($i = $startIndex; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            // Filter out empty rows
+            $cleanRow = array_filter(array_map('trim', $row));
+            if (empty($cleanRow)) {
+                continue;
+            }
+
+            $candidateNumber = isset($row[0]) && is_numeric(trim($row[0])) ? (int) trim($row[0]) : null;
+            $chairmanName = isset($row[1]) ? trim($row[1]) : '';
+            $viceChairmanName = isset($row[2]) ? trim($row[2]) : null;
+            $visionMission = isset($row[3]) ? trim($row[3]) : null;
+
+            if (! $candidateNumber || empty($chairmanName)) {
+                $lineNum = $i + 1;
+                $errors[] = "Baris ke-{$lineNum}: Nomor urut dan Nama Ketua wajib diisi.";
+
+                continue;
+            }
+
+            // Upsert or create candidate by election_id + candidate_number
+            CandidateEvote::updateOrCreate(
+                [
+                    'election_id' => $electionId,
+                    'candidate_number' => $candidateNumber,
+                ],
+                [
+                    'chairman_name' => $chairmanName,
+                    'vice_chairman_name' => ! empty($viceChairmanName) ? $viceChairmanName : null,
+                    'vision_mission' => ! empty($visionMission) ? nl2br(e($visionMission)) : null,
+                    'is_qualified' => true,
+                ]
+            );
+
+            $importedCount++;
+        }
+
+        if ($importedCount === 0 && ! empty($errors)) {
+            return back()->with('error', 'Gagal mengimpor kandidat. '.implode(' ', array_slice($errors, 0, 3)));
+        }
+
+        $message = "Berhasil mengimpor {$importedCount} kandidat.";
+        if (! empty($errors)) {
+            $message .= ' Beberapa baris dilewati karena data tidak lengkap.';
+        }
+
+        return redirect("/admin/pemilihan/{$electionId}/kandidat")->with('success', $message);
     }
 }

@@ -57,6 +57,18 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                    <!-- Live Polling Indicator -->
+                    <div
+                        class="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+                        title="Data diperbarui secara otomatis setiap beberapa detik"
+                    >
+                        <span class="relative flex h-2 w-2">
+                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </span>
+                        <span>Live Real-Time</span>
+                    </div>
+
                     <!-- Toggle Publish Button -->
                     <button
                         type="button"
@@ -239,135 +251,218 @@
                 </div>
             </div>
 
-            <!-- Chart Visual Breakdown Card -->
+            <!-- Vertical Column Chart (Cart Bar Ke Atas) -->
             <div
                 class="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
             >
-                <div>
-                    <h3
-                        class="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-white"
-                    >
-                        <BarChart3
-                            class="h-5 w-5 text-blue-600 dark:text-blue-400"
-                        />
-                        <span
-                            >Visualisasi Perolehan Suara Paslon (Tahap
-                            {{ selectedStage }})</span
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3
+                            class="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-white"
                         >
-                    </h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                        Grafik perbandingan suara dan persentase perolehan
-                        masing-masing kandidat.
-                    </p>
+                            <BarChart3
+                                class="h-5 w-5 text-blue-600 dark:text-blue-400"
+                            />
+                            <span>Grafik Perolehan Suara Paslon (Tahap {{ selectedStage }})</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Distribusi perolehan suara tegak (vertical bar chart) masing-masing pasangan calon.
+                        </p>
+                    </div>
+
+                    <span class="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                        Total: {{ election.total_votes }} Suara Masuk
+                    </span>
                 </div>
 
-                <!-- Custom HTML/CSS Bar Chart Visualization -->
-                <div class="space-y-5">
+                <!-- Vertical Bars Container -->
+                <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-6 dark:border-slate-800/80 dark:bg-slate-900/40">
                     <div
-                        v-for="(candidate, index) in results"
-                        :key="candidate.id"
-                        :class="[
-                            'space-y-2 rounded-2xl border p-4 transition-all',
-                            candidate.is_qualified === false
-                                ? 'border-slate-200 bg-slate-100/60 opacity-60 dark:border-slate-800 dark:bg-slate-900/40'
-                                : 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
-                        ]"
+                        v-if="!results || results.length === 0"
+                        class="py-12 text-center text-xs font-semibold text-slate-400"
                     >
-                        <!-- Candidate Info Bar -->
-                        <div class="flex items-center justify-between gap-4">
-                            <div class="flex min-w-0 items-center gap-3">
-                                <span
-                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-sm font-black text-amber-400"
-                                >
-                                    {{ candidate.candidate_number }}
-                                </span>
-                                <div class="truncate">
-                                    <h4
-                                        class="flex items-center gap-2 truncate text-sm font-extrabold text-slate-900 dark:text-white"
-                                    >
-                                        <span>{{
-                                            candidate.chairman_name
-                                        }}</span>
-                                        <span
-                                            v-if="
-                                                candidate.is_qualified === false
-                                            "
-                                            class="rounded bg-rose-100 px-2 py-0.5 text-[9px] font-extrabold text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                                        >
-                                            Tereliminasi di Tahap
-                                            {{
-                                                candidate.eliminated_at_stage ||
-                                                1
-                                            }}
-                                        </span>
-                                    </h4>
-                                    <p
-                                        v-if="candidate.vice_chairman_name"
-                                        class="truncate text-xs text-slate-500 dark:text-slate-400"
-                                    >
-                                        Wakil:
-                                        {{ candidate.vice_chairman_name }}
-                                    </p>
-                                </div>
-                            </div>
+                        Belum ada kandidat pada tahap ini
+                    </div>
 
-                            <div class="shrink-0 text-right">
-                                <span
-                                    class="block text-base font-black text-slate-900 dark:text-white"
-                                >
-                                    {{ candidate.votes_count }} Suara
+                    <div
+                        v-else
+                        class="grid items-end gap-4 pt-6"
+                        :style="{ gridTemplateColumns: `repeat(${results.length}, minmax(0, 1fr))` }"
+                    >
+                        <div
+                            v-for="(candidate, index) in results"
+                            :key="candidate.id"
+                            class="flex flex-col items-center gap-3 text-center"
+                        >
+                            <!-- Top Value Badge -->
+                            <div class="flex flex-col items-center">
+                                <span class="text-xs font-black text-slate-900 dark:text-white">
+                                    {{ candidate.votes_count }}
                                 </span>
-                                <span
-                                    class="text-xs font-bold text-blue-600 dark:text-blue-400"
-                                >
+                                <span class="text-[10px] font-bold text-blue-600 dark:text-blue-400">
                                     {{ candidate.percentage }}%
                                 </span>
                             </div>
-                        </div>
 
-                        <!-- Progress Bar Bar -->
-                        <div
-                            class="h-4 w-full overflow-hidden rounded-full bg-slate-200 p-0.5 dark:bg-slate-800"
-                        >
-                            <div
-                                :class="[
-                                    'h-full rounded-full transition-all duration-700 ease-out',
-                                    candidate.is_qualified === false
-                                        ? 'bg-slate-400 dark:bg-slate-600'
-                                        : index === 0
-                                          ? 'bg-blue-600 dark:bg-blue-500'
-                                          : index === 1
-                                            ? 'bg-emerald-600 dark:bg-emerald-500'
-                                            : 'bg-amber-600 dark:bg-amber-500',
-                                ]"
-                                :style="{ width: `${candidate.percentage}%` }"
-                            ></div>
+                            <!-- Bar Column Track -->
+                            <div class="relative flex h-52 w-full max-w-[70px] items-end justify-center rounded-2xl bg-slate-200/70 p-1 dark:bg-slate-800">
+                                <div
+                                    :class="[
+                                        'w-full rounded-xl transition-all duration-700 ease-out shadow-sm',
+                                        candidate.is_qualified === false
+                                            ? 'bg-slate-400 dark:bg-slate-600'
+                                            : index === 0 && candidate.votes_count > 0
+                                                ? 'bg-gradient-to-t from-blue-700 to-blue-500'
+                                                : index === 1 && candidate.votes_count > 0
+                                                    ? 'bg-gradient-to-t from-emerald-700 to-emerald-500'
+                                                    : 'bg-gradient-to-t from-indigo-600 to-cyan-500',
+                                    ]"
+                                    :style="{
+                                        height: `${Math.max(Number(candidate.percentage) || 0, candidate.votes_count > 0 ? 8 : 4)}%`,
+                                    }"
+                                ></div>
+                            </div>
+
+                            <!-- Candidate Number & Name Label -->
+                            <div class="w-full space-y-1">
+                                <span
+                                    :class="[
+                                        'inline-flex h-6 w-6 items-center justify-center rounded-lg text-xs font-black',
+                                        candidate.is_qualified === false
+                                            ? 'bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                            : 'bg-slate-900 text-amber-400 dark:bg-white dark:text-slate-900',
+                                    ]"
+                                >
+                                    {{ candidate.candidate_number }}
+                                </span>
+                                <p
+                                    class="truncate text-xs font-bold text-slate-800 dark:text-slate-200"
+                                    :title="candidate.chairman_name"
+                                >
+                                    {{ candidate.chairman_name }}
+                                </p>
+                                <span
+                                    v-if="candidate.is_qualified === false"
+                                    class="inline-block rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                                >
+                                    Gugur
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Table Breakdown Card -->
-            <div
-                class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
-            >
+            <!-- 2-Column Side-by-Side: Left = Visualisasi Horizontal, Right = Tabel Rekapitulasi -->
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <!-- Left Column: Visualisasi Horizontal Progress Bars -->
                 <div
-                    class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-5 dark:border-slate-700"
+                    class="flex flex-col justify-between space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
                 >
                     <div>
-                        <h3
-                            class="text-base font-extrabold text-slate-900 dark:text-white"
-                        >
-                            Tabel Rekapitulasi Perolehan Suara (Tahap
-                            {{ selectedStage }})
-                        </h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">
-                            Rincian data perolehan suara sah per paslon
-                        </p>
+                        <div class="mb-4">
+                            <h3
+                                class="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-white"
+                            >
+                                <TrendingUp
+                                    class="h-5 w-5 text-emerald-600 dark:text-emerald-400"
+                                />
+                                <span>Visualisasi Suara & Persentase</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Rincian progres perolehan suara per kandidat.
+                            </p>
+                        </div>
+
+                        <div class="space-y-3.5">
+                            <div
+                                v-for="(candidate, index) in results"
+                                :key="candidate.id"
+                                :class="[
+                                    'space-y-2 rounded-2xl border p-3.5 transition-all',
+                                    candidate.is_qualified === false
+                                        ? 'border-slate-200 bg-slate-100/60 opacity-60 dark:border-slate-800 dark:bg-slate-900/40'
+                                        : 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
+                                ]"
+                            >
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex min-w-0 items-center gap-2.5">
+                                        <span
+                                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-xs font-black text-amber-400"
+                                        >
+                                            {{ candidate.candidate_number }}
+                                        </span>
+                                        <div class="truncate">
+                                            <h4
+                                                class="flex items-center gap-1.5 truncate text-xs font-extrabold text-slate-900 dark:text-white"
+                                            >
+                                                <span>{{ candidate.chairman_name }}</span>
+                                                <span
+                                                    v-if="candidate.is_qualified === false"
+                                                    class="rounded bg-rose-100 px-1.5 py-0.2 text-[9px] font-extrabold text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                                                >
+                                                    Gugur
+                                                </span>
+                                            </h4>
+                                            <p
+                                                v-if="candidate.vice_chairman_name"
+                                                class="truncate text-[11px] text-slate-500 dark:text-slate-400"
+                                            >
+                                                Wakil: {{ candidate.vice_chairman_name }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="shrink-0 text-right">
+                                        <span class="block text-xs font-black text-slate-900 dark:text-white">
+                                            {{ candidate.votes_count }} Suara
+                                        </span>
+                                        <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                                            {{ candidate.percentage }}%
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="h-3 w-full overflow-hidden rounded-full bg-slate-200 p-0.5 dark:bg-slate-800"
+                                >
+                                    <div
+                                        :class="[
+                                            'h-full rounded-full transition-all duration-700 ease-out',
+                                            candidate.is_qualified === false
+                                                ? 'bg-slate-400 dark:bg-slate-600'
+                                                : index === 0
+                                                  ? 'bg-blue-600 dark:bg-blue-500'
+                                                  : index === 1
+                                                    ? 'bg-emerald-600 dark:bg-emerald-500'
+                                                    : 'bg-amber-600 dark:bg-amber-500',
+                                        ]"
+                                        :style="{ width: `${candidate.percentage}%` }"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
+                <!-- Right Column: Tabel Rekapitulasi -->
+                <div
+                    class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                >
+                    <div
+                        class="border-b border-slate-200 p-5 dark:border-slate-700"
+                    >
+                        <h3
+                            class="text-base font-extrabold text-slate-900 dark:text-white"
+                        >
+                            Tabel Rekapitulasi Perolehan Suara
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Data rincian peringkat suara pada Tahap {{ selectedStage }}.
+                        </p>
+                    </div>
+
+                    <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
                         <thead
                             class="border-b border-slate-200 bg-slate-50 font-bold tracking-wider text-slate-600 uppercase dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400"
@@ -464,6 +559,7 @@
                     </table>
                 </div>
             </div>
+        </div>
 
             <!-- Modal Advance Stage (Saring Top Candidate) -->
             <Teleport to="body">
@@ -700,8 +796,8 @@
  </template>
 
  <script setup lang="ts">
- import { ref } from 'vue';
- import { router, Link } from '@inertiajs/vue3';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { router, Link } from '@inertiajs/vue3';
  import {
      ArrowLeft,
      Vote,
@@ -809,6 +905,31 @@ const submitResetStages = () => {
 const windowPrint = () => {
     window.print();
 };
+
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+    // Polling background update setiap 3 detik secara halus tanpa me-reload browser
+    pollTimer = setInterval(() => {
+        // Jangan auto-reload jika modal sedang aktif dibuka admin
+        if (showAdvanceModal.value || showResetModal.value) {
+            return;
+        }
+
+        router.reload({
+            only: ['election', 'results', 'leadingCandidate', 'activeQualifiedCount'],
+            preserveScroll: true,
+            preserveState: true,
+        });
+    }, 3000);
+});
+
+onUnmounted(() => {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+});
 </script>
 
 <style scoped>

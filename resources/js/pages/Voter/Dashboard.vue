@@ -211,48 +211,6 @@
                         >
                             {{ item.election.description }}
                         </p>
-
-                        <!-- Previous Stage Qualifiers -->
-                        <div
-                            v-if="
-                                item.election.is_multi_stage &&
-                                item.election.previous_qualifiers &&
-                                item.election.previous_qualifiers.length > 0
-                            "
-                            class="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/40 dark:bg-amber-950/30"
-                        >
-                            <div
-                                class="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300"
-                            >
-                                <Trophy class="h-3.5 w-3.5 text-amber-600" />
-                                <span
-                                    >Lolos Tahap
-                                    {{ item.election.current_stage - 1 }}:</span
-                                >
-                            </div>
-                            <div class="space-y-1.5">
-                                <div
-                                    v-for="qualifier in item.election
-                                        .previous_qualifiers"
-                                    :key="qualifier.id"
-                                    class="flex items-center gap-2 rounded-lg border border-amber-200/50 bg-white p-1.5 text-xs dark:bg-slate-800"
-                                >
-                                    <span
-                                        class="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
-                                        >No.
-                                        {{ qualifier.candidate_number }}</span
-                                    >
-                                    <span
-                                        class="truncate font-bold text-slate-900 dark:text-white"
-                                        >{{
-                                            item.election.is_simulation
-                                                ? "Kandidat Tersamar"
-                                                : qualifier.chairman_name
-                                        }}</span
-                                    >
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Action Button Footer -->
@@ -413,7 +371,6 @@ import {
     BarChart3,
     ArrowRight,
     Layers,
-    Trophy,
     FlaskConical,
 } from "@lucide/vue";
 import VoterLayout from "@/Layouts/VoterLayout.vue";

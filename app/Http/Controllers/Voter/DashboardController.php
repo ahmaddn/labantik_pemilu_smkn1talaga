@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Voter;
 
 use App\Http\Controllers\Controller;
-use App\Models\CandidateEvote;
 use App\Models\ElectionEvote;
 use App\Models\SimulationVote;
 use App\Models\VoterAccessEvote;
@@ -65,18 +64,6 @@ class DashboardController extends Controller
                     'stage_schedules' => $election->stage_schedules ?? [],
                     'status' => $election->status,
                     'candidates_count' => $election->candidates_count,
-                    'previous_qualifiers' => $election->is_multi_stage && $election->current_stage > 1
-                        ? CandidateEvote::where('election_id', $election->id)
-                            ->where('is_qualified', true)
-                            ->get()
-                            ->map(fn ($c) => [
-                                'id' => $c->id,
-                                'candidate_number' => $c->candidate_number,
-                                'chairman_name' => $c->chairman_name,
-                                'vice_chairman_name' => $c->vice_chairman_name,
-                                'photo' => $c->photo,
-                            ])
-                        : [],
                 ],
             ];
         });

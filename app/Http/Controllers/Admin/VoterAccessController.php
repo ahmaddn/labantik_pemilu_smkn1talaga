@@ -20,6 +20,12 @@ class VoterAccessController extends Controller
         $election = ElectionEvote::with(['targetClass'])->findOrFail($electionId);
         $search = trim($request->input('search', ''));
 
+        $currentStage = $election->current_stage ?? 1;
+        $selectedStage = (int) $request->input('stage', $currentStage);
+        if ($selectedStage < 1) {
+            $selectedStage = 1;
+        }
+
         $query = VoterAccessEvote::with([
             'user' => function ($q) {
                 $q->select('id', 'name', 'email', 'role');
@@ -31,7 +37,8 @@ class VoterAccessController extends Controller
                 $q->select('id', 'user_id', 'nip');
             },
         ])
-            ->where('election_id', $electionId);
+            ->where('election_id', $electionId)
+            ->where('stage_number', $selectedStage);
 
         if (! empty($search)) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -125,8 +132,8 @@ class VoterAccessController extends Controller
             });
 
         $stats = [
-            'total_access' => VoterAccessEvote::where('election_id', $electionId)->count(),
-            'total_voted' => VoterAccessEvote::where('election_id', $electionId)->where('is_voted', true)->count(),
+            'total_access' => VoterAccessEvote::where('election_id', $electionId)->where('stage_number', $selectedStage)->count(),
+            'total_voted' => VoterAccessEvote::where('election_id', $electionId)->where('stage_number', $selectedStage)->where('is_voted', true)->count(),
         ];
 
         // Daftar kelas lengkap dengan academic_level (difilter tahun ajaran pemilihan jika ada)
@@ -165,12 +172,17 @@ class VoterAccessController extends Controller
                 'target_voter' => $election->target_voter,
                 'academic_year' => $election->academic_year,
                 'class_name' => $election->targetClass ? $election->targetClass->name : null,
+                'is_multi_stage' => (bool) $election->is_multi_stage,
+                'current_stage' => $election->current_stage ?? 1,
+                'total_stages' => $election->total_stages ?? 1,
             ],
+            'selectedStage' => $selectedStage,
             'voterAccesses' => $voterAccesses,
             'filters' => [
                 'search' => $search,
                 'sort_by' => $sortBy,
                 'class' => $classFilter,
+                'stage' => $selectedStage,
             ],
             'availableClasses' => $availableClasses,
             'stats' => $stats,

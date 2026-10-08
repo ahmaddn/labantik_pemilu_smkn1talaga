@@ -74,6 +74,43 @@
                 </div>
             </div>
 
+            <!-- Stage Selector Tabs (If Multi-Stage) -->
+            <div
+                v-if="election.is_multi_stage"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            >
+                <div class="flex flex-wrap items-center gap-2">
+                    <span
+                        class="px-2 text-xs font-bold tracking-wider text-slate-500 uppercase dark:text-slate-400"
+                    >
+                        Tahap Hak Pilih:
+                    </span>
+                    <button
+                        v-for="stg in election.total_stages"
+                        :key="stg"
+                        type="button"
+                        @click="changeStage(stg)"
+                        :class="[
+                            'cursor-pointer rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs',
+                            currentSelectedStage === stg
+                                ? 'bg-blue-600 text-white ring-2 ring-blue-400 dark:ring-blue-500 shadow-md'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700/70 dark:text-slate-300 dark:hover:bg-slate-700',
+                        ]"
+                    >
+                        Tahap {{ stg }}
+                        <span
+                            v-if="stg === election.current_stage"
+                            class="ml-1 rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[10px] text-emerald-700 dark:text-emerald-300 font-extrabold"
+                        >
+                            Aktif
+                        </span>
+                    </button>
+                </div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 pr-2">
+                    Menampilkan data status hak pilih untuk: <strong class="text-blue-600 dark:text-blue-400">Tahap {{ currentSelectedStage }}</strong>
+                </div>
+            </div>
+
             <!-- Stats Pill Bar -->
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-2">
                 <div
@@ -82,7 +119,7 @@
                     <div>
                         <span
                             class="text-xs font-semibold text-slate-500 dark:text-slate-400"
-                            >Total Terdaftar</span
+                            >Total Terdaftar (Tahap {{ currentSelectedStage }})</span
                         >
                         <span
                             class="block text-xl font-black text-slate-900 dark:text-white"
@@ -98,7 +135,7 @@
                     <div>
                         <span
                             class="text-xs font-semibold text-slate-500 dark:text-slate-400"
-                            >Sudah Memilih</span
+                            >Sudah Memilih (Tahap {{ currentSelectedStage }})</span
                         >
                         <span
                             class="block text-xl font-black text-emerald-600 dark:text-emerald-400"
@@ -121,6 +158,9 @@
                             class="text-base font-extrabold text-slate-900 dark:text-white"
                         >
                             Daftar Pemilih Terdaftar
+                            <span v-if="election.is_multi_stage" class="text-xs font-medium text-blue-600 dark:text-blue-400 ml-1.5">
+                                (Tahap {{ currentSelectedStage }})
+                            </span>
                         </h3>
                         <p class="text-xs text-slate-500 dark:text-slate-400">
                             Status penggunaan hak pilih pengguna
@@ -535,12 +575,17 @@ const props = defineProps<{
         target_voter: string;
         academic_year: string | null;
         class_name: string | null;
+        is_multi_stage?: boolean;
+        current_stage?: number;
+        total_stages?: number;
     };
+    selectedStage?: number;
     voterAccesses: any;
     filters?: {
         search?: string;
         sort_by?: string;
         class?: string;
+        stage?: number;
     };
     availableClasses?: string[];
     stats: {
@@ -548,6 +593,10 @@ const props = defineProps<{
         total_voted: number;
     };
 }>();
+
+const currentSelectedStage = ref<number>(
+    props.selectedStage || props.filters?.stage || props.election.current_stage || 1
+);
 
 const isGenerating = ref(false);
 const isDeletingAll = ref(false);
@@ -626,6 +675,11 @@ const sortBy = ref(props.filters?.sort_by || 'name');
 const selectedClass = ref(props.filters?.class || '');
 let searchTimer: any = null;
 
+const changeStage = (stageNum: number) => {
+    currentSelectedStage.value = stageNum;
+    applyFilters();
+};
+
 const applyFilters = () => {
     router.get(
         `/admin/pemilihan/${props.election.id}/pemilih`,
@@ -633,6 +687,7 @@ const applyFilters = () => {
             search: searchQuery.value,
             sort_by: sortBy.value,
             class: selectedClass.value,
+            stage: currentSelectedStage.value,
         },
         { preserveState: true, replace: true, preserveScroll: true }
     );

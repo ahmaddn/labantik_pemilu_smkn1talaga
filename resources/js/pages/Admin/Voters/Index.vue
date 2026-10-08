@@ -49,6 +49,15 @@
 
                     <button
                         type="button"
+                        @click="openSelectModal"
+                        class="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 cursor-pointer"
+                    >
+                        <UserPlus class="h-3.5 w-3.5" />
+                        <span>Pilih Pemilih Tertentu</span>
+                    </button>
+
+                    <button
+                        type="button"
                         :disabled="isGenerating"
                         @click="generateBatch"
                         class="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
@@ -118,25 +127,63 @@
                         </p>
                     </div>
 
-                    <!-- Search Bar Box -->
-                    <div class="relative w-full max-w-xs">
-                        <Search
-                            class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
-                        />
-                        <input
-                            v-model="searchQuery"
-                            type="text"
-                            placeholder="Cari nama, NIS, NIP, email..."
-                            @input="handleSearch"
-                            class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2 pr-8 pl-9 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                        />
-                        <button
-                            v-if="searchQuery"
-                            @click="clearSearch"
-                            class="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    <!-- Filter & Search Controls -->
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <!-- Urutkan Berdasarkan -->
+                        <div class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <span class="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Urutkan:</span>
+                            <select
+                                v-model="sortBy"
+                                @change="handleSortChange"
+                                class="rounded-xl border border-slate-300 bg-slate-50 py-1.5 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white cursor-pointer"
+                            >
+                                <option value="name">Nama Pemilih (A-Z)</option>
+                                <option value="class">Kelas / Tingkat (10 - 12)</option>
+                            </select>
+                        </div>
+
+                        <!-- Filter Kelas (Jika ada data kelas) -->
+                        <div
+                            v-if="availableClasses && availableClasses.length > 0"
+                            class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"
                         >
-                            <X class="h-3.5 w-3.5" />
-                        </button>
+                            <span class="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Kelas:</span>
+                            <select
+                                v-model="selectedClass"
+                                @change="handleClassFilterChange"
+                                class="rounded-xl border border-slate-300 bg-slate-50 py-1.5 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white cursor-pointer"
+                            >
+                                <option value="">Semua Kelas</option>
+                                <option
+                                    v-for="cls in availableClasses"
+                                    :key="cls"
+                                    :value="cls"
+                                >
+                                    {{ cls }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Search Bar Box -->
+                        <div class="relative w-full sm:w-56">
+                            <Search
+                                class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+                            />
+                            <input
+                                v-model="searchQuery"
+                                type="text"
+                                placeholder="Cari nama, NIS, NIP..."
+                                @input="handleSearch"
+                                class="w-full rounded-xl border border-slate-300 bg-slate-50 py-1.5 pr-8 pl-9 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                            />
+                            <button
+                                v-if="searchQuery"
+                                @click="clearSearch"
+                                class="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            >
+                                <X class="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -147,6 +194,7 @@
                         >
                             <tr>
                                 <th class="p-3.5 pl-5">Nama Pemilih</th>
+                                <th class="p-3.5">Kelas / Rombel</th>
                                 <th class="p-3.5">NIS / NIP / Email</th>
                                 <th class="p-3.5">Role</th>
                                 <th class="p-3.5">Status Voting</th>
@@ -164,7 +212,7 @@
                                 "
                             >
                                 <td
-                                    colspan="6"
+                                    colspan="7"
                                     class="p-8 text-center text-slate-500 dark:text-slate-400"
                                 >
                                     <div class="space-y-1">
@@ -194,12 +242,30 @@
                                 >
                                     {{ access.user_name }}
                                 </td>
+                                <td class="p-3.5">
+                                    <span
+                                        v-if="access.user_class"
+                                        class="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+                                    >
+                                        {{ access.user_class }}
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="text-xs text-slate-400 dark:text-slate-500"
+                                    >
+                                        -
+                                    </span>
+                                </td>
                                 <td
                                     class="p-3.5 font-medium text-slate-600 dark:text-slate-300"
                                 >
-                                    {{ access.user_subtext }} ({{
-                                        access.user_email
-                                    }})
+                                    <div>{{ access.user_identifier }}</div>
+                                    <div
+                                        v-if="access.user_email && access.user_identifier !== access.user_email"
+                                        class="text-[11px] text-slate-400 dark:text-slate-500"
+                                    >
+                                        {{ access.user_email }}
+                                    </div>
                                 </td>
                                 <td class="p-3.5">
                                     <span
@@ -300,6 +366,112 @@
                 @cancel="showBatchConfirm = false"
             />
 
+            <!-- Select Custom Users Modal -->
+            <div
+                v-if="showSelectModal"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+            >
+                <div
+                    class="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+                >
+                    <div class="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
+                        <div>
+                            <h3 class="text-base font-extrabold text-slate-900 dark:text-white">
+                                Tambah Pemilih Tertentu
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Cari dan pilih siswa atau guru untuk dijadikan pemilih.
+                            </p>
+                        </div>
+                        <button
+                            @click="closeSelectModal"
+                            class="rounded-lg p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                            <X class="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        <!-- Search Box inside Modal -->
+                        <div class="relative">
+                            <Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                v-model="userSearchQuery"
+                                type="text"
+                                placeholder="Ketik nama, NIS, NIP, atau email..."
+                                @input="searchEligibleUsers"
+                                class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 pr-8 pl-9 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                            />
+                            <span v-if="isLoadingUsers" class="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-slate-400">
+                                <RefreshCw class="h-3.5 w-3.5 animate-spin" />
+                            </span>
+                        </div>
+
+                        <!-- User List Box -->
+                        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                            <div
+                                v-if="userCandidates.length === 0"
+                                class="p-6 text-center text-xs text-slate-500 dark:text-slate-400"
+                            >
+                                {{ isLoadingUsers ? 'Sedang mencari data pengguna...' : 'Tidak ada pengguna ditemukan atau semua sudah terdaftar.' }}
+                            </div>
+                            <label
+                                v-for="cand in userCandidates"
+                                :key="cand.id"
+                                class="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
+                            >
+                                <input
+                                    type="checkbox"
+                                    :value="cand.id"
+                                    v-model="selectedUserIds"
+                                    class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-bold text-slate-900 truncate dark:text-white">
+                                        {{ cand.name }}
+                                    </p>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                        {{ cand.identifier }} ({{ cand.email }})
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Selected Info -->
+                        <div class="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                            <span>Terpilih: <strong>{{ selectedUserIds.length }}</strong> pengguna</span>
+                            <button
+                                v-if="selectedUserIds.length > 0"
+                                type="button"
+                                @click="selectedUserIds = []"
+                                class="text-blue-600 hover:underline dark:text-blue-400 cursor-pointer"
+                            >
+                                Reset Pilihan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                        <button
+                            type="button"
+                            @click="closeSelectModal"
+                            class="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            :disabled="selectedUserIds.length === 0 || isSubmittingSelected"
+                            @click="submitSelectedUsers"
+                            class="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+                        >
+                            <RefreshCw v-if="isSubmittingSelected" class="h-3.5 w-3.5 animate-spin" />
+                            <span>{{ isSubmittingSelected ? 'Menyimpan...' : 'Tambahkan Terpilih' }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Delete Access Confirm Modal -->
             <ConfirmModal
                 :show="showDeleteConfirm"
@@ -331,6 +503,7 @@ import {
     Trash2,
     Search,
     X,
+    UserPlus,
 } from '@lucide/vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -346,7 +519,10 @@ const props = defineProps<{
     voterAccesses: any;
     filters?: {
         search?: string;
+        sort_by?: string;
+        class?: string;
     };
+    availableClasses?: string[];
     stats: {
         total_access: number;
         total_voted: number;
@@ -360,27 +536,99 @@ const showDeleteConfirm = ref(false);
 const showDeleteAllConfirm = ref(false);
 const selectedAccessToDelete = ref<any | null>(null);
 
+// State untuk Modal Pilih Pemilih Tertentu
+const showSelectModal = ref(false);
+const userSearchQuery = ref('');
+const userCandidates = ref<any[]>([]);
+const selectedUserIds = ref<string[]>([]);
+const isLoadingUsers = ref(false);
+const isSubmittingSelected = ref(false);
+let userSearchTimer: any = null;
+
+const openSelectModal = () => {
+    showSelectModal.value = true;
+    userSearchQuery.value = '';
+    selectedUserIds.value = [];
+    searchEligibleUsers();
+};
+
+const closeSelectModal = () => {
+    showSelectModal.value = false;
+    userCandidates.value = [];
+    selectedUserIds.value = [];
+};
+
+const searchEligibleUsers = () => {
+    clearTimeout(userSearchTimer);
+    userSearchTimer = setTimeout(async () => {
+        isLoadingUsers.value = true;
+        try {
+            const res = await fetch(
+                `/admin/pemilihan/${props.election.id}/pemilih/search-users?q=${encodeURIComponent(userSearchQuery.value)}`
+            );
+            if (res.ok) {
+                userCandidates.value = await res.json();
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoadingUsers.value = false;
+        }
+    }, 300);
+};
+
+const submitSelectedUsers = () => {
+    if (selectedUserIds.value.length === 0) return;
+    isSubmittingSelected.value = true;
+    router.post(
+        `/admin/pemilihan/${props.election.id}/pemilih-terpilih`,
+        { user_ids: selectedUserIds.value },
+        {
+            onSuccess: () => {
+                closeSelectModal();
+            },
+            onFinish: () => {
+                isSubmittingSelected.value = false;
+            },
+        }
+    );
+};
+
 const searchQuery = ref(props.filters?.search || '');
+const sortBy = ref(props.filters?.sort_by || 'name');
+const selectedClass = ref(props.filters?.class || '');
 let searchTimer: any = null;
+
+const applyFilters = () => {
+    router.get(
+        `/admin/pemilihan/${props.election.id}/pemilih`,
+        {
+            search: searchQuery.value,
+            sort_by: sortBy.value,
+            class: selectedClass.value,
+        },
+        { preserveState: true, replace: true, preserveScroll: true }
+    );
+};
 
 const handleSearch = () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
-        router.get(
-            `/admin/pemilihan/${props.election.id}/pemilih`,
-            { search: searchQuery.value },
-            { preserveState: true, replace: true, preserveScroll: true }
-        );
+        applyFilters();
     }, 350);
+};
+
+const handleSortChange = () => {
+    applyFilters();
+};
+
+const handleClassFilterChange = () => {
+    applyFilters();
 };
 
 const clearSearch = () => {
     searchQuery.value = '';
-    router.get(
-        `/admin/pemilihan/${props.election.id}/pemilih`,
-        {},
-        { preserveState: true, replace: true }
-    );
+    applyFilters();
 };
 
 const generateBatch = () => {

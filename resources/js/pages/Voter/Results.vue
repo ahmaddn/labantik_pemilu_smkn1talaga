@@ -59,17 +59,31 @@
                                 {{ item.candidate_number }}
                             </div>
                             <div>
-                                <h3
-                                    class="text-sm font-extrabold text-slate-900 dark:text-white"
-                                >
-                                    {{ item.chairman_name }}
-                                </h3>
-                                <p
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <h3
+                                        class="text-sm font-extrabold text-slate-900 dark:text-white"
+                                    >
+                                        {{ item.chairman_name }}
+                                    </h3>
+                                    <span
+                                        v-if="item.chairman_class"
+                                        class="rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                                    >
+                                        {{ item.chairman_class }}
+                                    </span>
+                                </div>
+                                <div
                                     v-if="item.vice_chairman_name"
-                                    class="text-xs font-medium text-slate-500 dark:text-slate-400"
+                                    class="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400"
                                 >
-                                    Wakil: {{ item.vice_chairman_name }}
-                                </p>
+                                    <span>Wakil: {{ item.vice_chairman_name }}</span>
+                                    <span
+                                        v-if="item.vice_chairman_class"
+                                        class="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                    >
+                                        {{ item.vice_chairman_class }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 

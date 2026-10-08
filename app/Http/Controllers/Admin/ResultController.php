@@ -7,6 +7,7 @@ use App\Models\CandidateEvote;
 use App\Models\ElectionEvote;
 use App\Models\VoteEvote;
 use App\Models\VoterAccessEvote;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -48,7 +49,40 @@ class ResultController extends Controller
             ->groupBy('candidate_id')
             ->pluck('count', 'candidate_id');
 
-        $results = $election->candidates->map(function ($candidate) use ($votesMap, $totalVotes) {
+        $candidateNames = [];
+        foreach ($election->candidates as $c) {
+            $candidateNames[] = trim($c->chairman_name);
+            if ($c->vice_chairman_name) {
+                $candidateNames[] = trim($c->vice_chairman_name);
+            }
+        }
+        $candidateNames = array_unique(array_filter($candidateNames));
+
+        $candidateClassMap = [];
+        if (! empty($candidateNames)) {
+            $candClassRows = DB::table('ref_students')
+                ->join('ref_student_academic_years', 'ref_students.id', '=', 'ref_student_academic_years.student_id')
+                ->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+                ->whereIn('ref_students.full_name', $candidateNames)
+                ->whereNull('ref_student_academic_years.mutation_date');
+
+            if ($election->academic_year) {
+                $candClassRows->where('ref_student_academic_years.academic_year', $election->academic_year);
+            }
+
+            $candClassRows = $candClassRows->select(
+                'ref_students.full_name',
+                'ref_classes.academic_level',
+                'ref_classes.name as class_name'
+            )->get();
+
+            foreach ($candClassRows as $row) {
+                $levelStr = $row->academic_level ? "Kelas {$row->academic_level} " : 'Kelas ';
+                $candidateClassMap[trim($row->full_name)] = trim($levelStr.$row->class_name);
+            }
+        }
+
+        $results = $election->candidates->map(function ($candidate) use ($votesMap, $totalVotes, $candidateClassMap) {
             $count = (int) ($votesMap[$candidate->id] ?? 0);
             $percentage = $totalVotes > 0 ? round(($count / $totalVotes) * 100, 1) : 0;
 
@@ -56,7 +90,9 @@ class ResultController extends Controller
                 'id' => $candidate->id,
                 'candidate_number' => $candidate->candidate_number,
                 'chairman_name' => $candidate->chairman_name,
+                'chairman_class' => $candidateClassMap[trim($candidate->chairman_name)] ?? null,
                 'vice_chairman_name' => $candidate->vice_chairman_name,
+                'vice_chairman_class' => $candidate->vice_chairman_name ? ($candidateClassMap[trim($candidate->vice_chairman_name)] ?? null) : null,
                 'photo' => $candidate->photo,
                 'is_qualified' => $candidate->is_qualified,
                 'eliminated_at_stage' => $candidate->eliminated_at_stage,
@@ -249,5 +285,119 @@ class ResultController extends Controller
 
         return redirect("/admin/pemilihan/{$electionId}/hasil?stage=1")
             ->with('success', 'Semua kandidat berhasil dikembalikan dan tahap dipulihkan ke Tahap 1!');
+    }
+
+    /**
+     * Download official PDF recap of election results.
+     */
+    public function downloadPdf(string $electionId, Request $request)
+    {
+        $election = ElectionEvote::with(['candidates'])->findOrFail($electionId);
+
+        $selectedStage = (int) $request->input('stage', $election->current_stage);
+        if ($selectedStage < 1) {
+            $selectedStage = 1;
+        }
+
+        $totalVotes = VoteEvote::where('election_id', $electionId)
+            ->where('stage_number', $selectedStage)
+            ->count();
+
+        $totalVoters = VoterAccessEvote::where('election_id', $electionId)
+            ->where('stage_number', $selectedStage)
+            ->count();
+        if ($totalVoters === 0) {
+            $totalVoters = VoterAccessEvote::where('election_id', $electionId)->count();
+        }
+
+        $turnoutPercentage = $totalVoters > 0 ? round(($totalVotes / $totalVoters) * 100, 1) : 0;
+
+        $votesMap = VoteEvote::where('election_id', $electionId)
+            ->where('stage_number', $selectedStage)
+            ->selectRaw('candidate_id, count(*) as count')
+            ->groupBy('candidate_id')
+            ->pluck('count', 'candidate_id');
+
+        $candidateNames = [];
+        foreach ($election->candidates as $c) {
+            $candidateNames[] = trim($c->chairman_name);
+            if ($c->vice_chairman_name) {
+                $candidateNames[] = trim($c->vice_chairman_name);
+            }
+        }
+        $candidateNames = array_unique(array_filter($candidateNames));
+
+        $candidateClassMap = [];
+        if (! empty($candidateNames)) {
+            $candClassRows = \Illuminate\Support\Facades\DB::table('ref_students')
+                ->join('ref_student_academic_years', 'ref_students.id', '=', 'ref_student_academic_years.student_id')
+                ->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+                ->whereIn('ref_students.full_name', $candidateNames)
+                ->whereNull('ref_student_academic_years.mutation_date');
+
+            if ($election->academic_year) {
+                $candClassRows->where('ref_student_academic_years.academic_year', $election->academic_year);
+            }
+
+            $candClassRows = $candClassRows->select(
+                'ref_students.full_name',
+                'ref_classes.academic_level',
+                'ref_classes.name as class_name'
+            )->get();
+
+            foreach ($candClassRows as $row) {
+                $levelStr = $row->academic_level ? "Kelas {$row->academic_level} " : 'Kelas ';
+                $candidateClassMap[trim($row->full_name)] = trim($levelStr.$row->class_name);
+            }
+        }
+
+        $results = $election->candidates->map(function ($candidate) use ($votesMap, $totalVotes, $candidateClassMap) {
+            $count = (int) ($votesMap[$candidate->id] ?? 0);
+            $percentage = $totalVotes > 0 ? round(($count / $totalVotes) * 100, 1) : 0;
+
+            return [
+                'id' => $candidate->id,
+                'candidate_number' => $candidate->candidate_number,
+                'chairman_name' => $candidate->chairman_name,
+                'chairman_class' => $candidateClassMap[trim($candidate->chairman_name)] ?? null,
+                'vice_chairman_name' => $candidate->vice_chairman_name,
+                'vice_chairman_class' => $candidate->vice_chairman_name ? ($candidateClassMap[trim($candidate->vice_chairman_name)] ?? null) : null,
+                'is_qualified' => $candidate->is_qualified,
+                'eliminated_at_stage' => $candidate->eliminated_at_stage,
+                'votes_count' => $count,
+                'percentage' => $percentage,
+            ];
+        });
+
+        $leadingCandidate = $results->sortByDesc('votes_count')->first();
+
+        // Hari dan tanggal dalam Bahasa Indonesia
+        $daysIndo = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $monthsIndo = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        $now = Carbon::now();
+        $generatedDay = $daysIndo[$now->dayOfWeek];
+        $generatedDate = $now->day.' '.$monthsIndo[$now->month].' '.$now->year;
+        $generatedTimestamp = $now->format('H:i:s');
+
+        $pdf = Pdf::loadView('pdf.election_recap', [
+            'election' => $election,
+            'selectedStage' => $selectedStage,
+            'totalVotes' => $totalVotes,
+            'totalVoters' => $totalVoters,
+            'turnoutPercentage' => $turnoutPercentage,
+            'results' => $results,
+            'leadingCandidate' => $leadingCandidate && $leadingCandidate['votes_count'] > 0 ? $leadingCandidate : null,
+            'generatedDay' => $generatedDay,
+            'generatedDate' => $generatedDate,
+            'generatedTimestamp' => $generatedTimestamp,
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        $slugTitle = Str::slug($election->title);
+        $filename = "Rekap-Hasil-{$slugTitle}-Tahap-{$selectedStage}.pdf";
+
+        return $pdf->download($filename);
     }
 }

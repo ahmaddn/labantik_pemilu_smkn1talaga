@@ -256,7 +256,7 @@
 
                     <!-- Jumlah Suara per Pemilih (Multi-Choice) Option -->
                     <div
-                        class="space-y-2 rounded-xl border border-purple-200/70 bg-purple-50/60 p-4 dark:border-purple-900/60 dark:bg-purple-950/40"
+                        class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/60"
                     >
                         <div class="flex items-center justify-between gap-4">
                             <div>
@@ -274,14 +274,14 @@
                                 type="number"
                                 min="1"
                                 max="20"
-                                class="w-24 rounded-lg border border-purple-300 bg-white p-2 text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800 dark:bg-slate-900 dark:text-white"
+                                class="w-24 rounded-lg border border-slate-300 bg-white p-2 text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                             />
                         </div>
                     </div>
 
                     <!-- Mode Simulasi (Gladi Pemilihan dengan Nama Kandidat Disamarkan) -->
                     <div
-                        class="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/40"
+                        class="space-y-3 rounded-xl border border-blue-200/70 bg-blue-50/50 p-4 dark:border-blue-900/50 dark:bg-blue-950/30"
                     >
                         <label
                             class="flex cursor-pointer items-start gap-3 select-none"
@@ -289,15 +289,15 @@
                             <input
                                 type="checkbox"
                                 v-model="form.is_simulation"
-                                class="mt-0.5 h-4 w-4 cursor-pointer rounded text-amber-600 focus:ring-amber-500"
+                                class="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                             />
                             <div>
                                 <span
-                                    class="block text-xs font-bold text-amber-900 dark:text-amber-200"
+                                    class="block text-xs font-bold text-slate-900 dark:text-white"
                                     >Buka Sebagai Sesi Simulasi / Gladi Pemilihan</span
                                 >
                                 <span
-                                    class="block text-[11px] text-amber-700/80 dark:text-amber-300/80"
+                                    class="block text-[11px] text-slate-600 dark:text-slate-400"
                                     >Saat mode simulasi aktif, <strong>nama kandidat otomatis disamarkan</strong> (Kandidat A, Kandidat B, dst.) bagi pemilih. Suara pemilih tersimpan terpisah di sandbox simulasi tanpa merusak data pemilu asli.</span
                                 >
                             </div>
@@ -306,9 +306,9 @@
                         <!-- Jadwal Waktu Khusus Simulasi (Opsional) -->
                         <div
                             v-if="form.is_simulation"
-                            class="space-y-3 border-t border-amber-200/60 pt-3 dark:border-amber-900/50"
+                            class="space-y-3 border-t border-blue-200/60 pt-3 dark:border-blue-900/50"
                         >
-                            <span class="block text-[11px] font-bold text-amber-900 dark:text-amber-200">
+                            <span class="block text-[11px] font-bold text-slate-800 dark:text-slate-200">
                                 Jadwal Waktu Sesi Simulasi (Opsional - default mengikuti waktu pemilihan jika dikosongkan):
                             </span>
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -319,7 +319,7 @@
                                     <input
                                         v-model="form.simulation_start_at"
                                         type="datetime-local"
-                                        class="w-full rounded-xl border border-amber-300 bg-white p-2.5 text-xs text-slate-900 dark:border-amber-800 dark:bg-slate-900 dark:text-white"
+                                        class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                     />
                                 </div>
                                 <div class="space-y-1">
@@ -329,7 +329,7 @@
                                     <input
                                         v-model="form.simulation_end_at"
                                         type="datetime-local"
-                                        class="w-full rounded-xl border border-amber-300 bg-white p-2.5 text-xs text-slate-900 dark:border-amber-800 dark:bg-slate-900 dark:text-white"
+                                        class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                     />
                                 </div>
                             </div>

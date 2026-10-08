@@ -48,6 +48,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/pemilihan/{election}/toggle-publish', [ElectionController::class, 'togglePublish'])->name('elections.toggle-publish');
         Route::post('/pemilihan/{election}/toggle-simulation', [ElectionController::class, 'toggleSimulation'])->name('elections.toggle-simulation');
         Route::get('/pemilihan/{election}/hasil', [ResultController::class, 'show'])->name('elections.results');
+        Route::get('/pemilihan/{election}/hasil/pdf', [ResultController::class, 'downloadPdf'])->name('elections.results.pdf');
         Route::post('/pemilihan/{election}/advance-stage', [ResultController::class, 'advanceStage'])->name('elections.advance-stage');
         Route::post('/pemilihan/{election}/reset-stages', [ResultController::class, 'resetStages'])->name('elections.reset-stages');
 
@@ -69,7 +70,9 @@ Route::middleware('auth')->group(function () {
 
         // Voter Access Management
         Route::get('/pemilihan/{election}/pemilih', [VoterAccessController::class, 'index'])->name('voters.index');
+        Route::get('/pemilihan/{election}/pemilih/search-users', [VoterAccessController::class, 'searchUsers'])->name('voters.search-users');
         Route::post('/pemilihan/{election}/generate-pemilih', [VoterAccessController::class, 'generateBatch'])->name('voters.generate');
+        Route::post('/pemilihan/{election}/pemilih-terpilih', [VoterAccessController::class, 'storeSelected'])->name('voters.store-selected');
         Route::delete('/pemilihan/{election}/pemilih-semua', [VoterAccessController::class, 'destroyAll'])->name('voters.destroy-all');
         Route::delete('/pemilihan/{election}/pemilih/{access}', [VoterAccessController::class, 'destroy'])->name('voters.destroy');
 

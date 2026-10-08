@@ -91,15 +91,15 @@
                         }}</span>
                     </button>
 
-                    <!-- Print / Refresh Button -->
-                    <button
-                        type="button"
-                        @click="windowPrint"
-                        class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-800"
+                    <!-- Download PDF Rekap Resmi -->
+                    <a
+                        :href="`/admin/pemilihan/${election.id}/hasil/pdf?stage=${selectedStage}`"
+                        class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
+                        title="Unduh Berita Acara Rekapitulasi Format PDF Resmi"
                     >
-                        <Printer class="h-4 w-4" />
-                        <span>Cetak Rekap</span>
-                    </button>
+                        <Download class="h-4 w-4" />
+                        <span>Download PDF Rekap</span>
+                    </a>
                 </div>
             </div>
 
@@ -135,7 +135,7 @@
                         v-if="election.current_stage < election.total_stages"
                         type="button"
                         @click="showAdvanceModal = true"
-                        class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-purple-700"
+                        class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700"
                     >
                         <Filter class="h-4 w-4" />
                         <span>Saring Top Paslon & Lanjutkan Tahap</span>
@@ -424,15 +424,27 @@
 
                                 <!-- Pasangan Calon -->
                                 <td class="p-4">
-                                    <div class="space-y-0.5">
-                                        <div class="font-extrabold text-sm text-slate-900 dark:text-white">
-                                            {{ candidate.chairman_name }}
+                                    <div class="space-y-1">
+                                        <div class="flex flex-wrap items-center gap-1.5 font-extrabold text-sm text-slate-900 dark:text-white">
+                                            <span>{{ candidate.chairman_name }}</span>
+                                            <span
+                                                v-if="candidate.chairman_class"
+                                                class="rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                                            >
+                                                {{ candidate.chairman_class }}
+                                            </span>
                                         </div>
                                         <div
                                             v-if="candidate.vice_chairman_name"
-                                            class="text-xs font-medium text-slate-500 dark:text-slate-400"
+                                            class="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400"
                                         >
-                                            Wakil: {{ candidate.vice_chairman_name }}
+                                            <span>Wakil: {{ candidate.vice_chairman_name }}</span>
+                                            <span
+                                                v-if="candidate.vice_chairman_class"
+                                                class="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                            >
+                                                {{ candidate.vice_chairman_class }}
+                                            </span>
                                         </div>
                                     </div>
                                 </td>
@@ -657,7 +669,7 @@
                              <!-- Schedule Options Section -->
                              <div class="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs dark:border-slate-700 dark:bg-slate-800/60">
                                  <div class="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
-                                     <Calendar class="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                     <Calendar class="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                      <span>Jadwal Waktu Tahap {{ election.current_stage + 1 }}</span>
                                  </div>
 
@@ -666,7 +678,7 @@
                                          :class="[
                                              'flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 transition-all',
                                              scheduleOption === 'now'
-                                                 ? 'border-purple-500 bg-purple-50/70 text-purple-900 dark:border-purple-500 dark:bg-purple-950/60 dark:text-white'
+                                                 ? 'border-blue-500 bg-blue-50/70 text-blue-900 dark:border-blue-500 dark:bg-blue-950/60 dark:text-white'
                                                  : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
                                          ]"
                                      >
@@ -674,7 +686,7 @@
                                              type="radio"
                                              value="now"
                                              v-model="scheduleOption"
-                                             class="h-3.5 w-3.5 text-purple-600 focus:ring-purple-500"
+                                             class="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500"
                                          />
                                          <span class="font-bold">Mulai Sekarang (Detik Ini)</span>
                                      </label>
@@ -683,7 +695,7 @@
                                          :class="[
                                              'flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 transition-all',
                                              scheduleOption === 'custom'
-                                                 ? 'border-purple-500 bg-purple-50/70 text-purple-900 dark:border-purple-500 dark:bg-purple-950/60 dark:text-white'
+                                                 ? 'border-blue-500 bg-blue-50/70 text-blue-900 dark:border-blue-500 dark:bg-blue-950/60 dark:text-white'
                                                  : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
                                          ]"
                                      >
@@ -691,7 +703,7 @@
                                              type="radio"
                                              value="custom"
                                              v-model="scheduleOption"
-                                             class="h-3.5 w-3.5 text-purple-600 focus:ring-purple-500"
+                                             class="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500"
                                          />
                                          <span class="font-bold">Pilih Tanggal Mulai</span>
                                      </label>
@@ -705,7 +717,7 @@
                                      <input
                                          type="datetime-local"
                                          v-model="nextStartAt"
-                                         class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                         class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                      />
                                  </div>
 
@@ -717,7 +729,7 @@
                                      <input
                                          type="datetime-local"
                                          v-model="nextEndAt"
-                                         class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                         class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                      />
                                  </div>
                              </div>
@@ -735,7 +747,7 @@
                                  <button
                                      type="button"
                                      @click="submitAdvanceStage"
-                                     class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-purple-700"
+                                     class="flex cursor-pointer items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700"
                                  >
                                      <Filter class="h-4 w-4" />
                                      <span>Proses Lanjut Tahap {{ election.current_stage + 1 }}</span>
@@ -775,6 +787,7 @@ import { router, Link } from '@inertiajs/vue3';
      EyeOff,
      CheckCircle2,
      Printer,
+     Download,
      Filter,
      RotateCcw,
      Calendar,

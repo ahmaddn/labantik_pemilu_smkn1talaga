@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSettingEvote;
 use App\Models\ElectionEvote;
-use App\Models\Student;
 use App\Models\VoteEvote;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -16,10 +16,12 @@ class DashboardController extends Controller
     {
         $totalElections = ElectionEvote::count();
 
-        // 1. Hitung Siswa Aktif (sesuai kriteria pemilih aktif di tahun ajaran terkini atau total siswa aktif)
-        $totalStudents = Student::whereHas('user', function ($q) {
-            $q->where('is_active', true);
-        })->count();
+        // 1. Hitung Siswa Aktif (persis sama dengan metode SIMS: ref_student_academic_years dengan academic_year aktif & whereNull mutation_date)
+        $activeAcademicYear = AppSettingEvote::getValue('active_academic_year', '2026/2027');
+        $totalStudents = DB::table('ref_student_academic_years')
+            ->where('academic_year', $activeAcademicYear)
+            ->whereNull('mutation_date')
+            ->count();
 
         // 2. Hitung Guru (HANYA role 'Guru' yang aktif, tanpa tendik, kepsek, kurikulum, kesiswaan, superadmin, atau siswa)
         $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];

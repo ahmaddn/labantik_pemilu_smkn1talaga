@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\CandidateEvote;
 use App\Models\ElectionEvote;
 use App\Models\Employee;
-use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,14 +44,32 @@ class CandidateController extends Controller
                 'info' => $u->email ? "Email: {$u->email}" : 'Guru / Staf SMKN 1 Talaga',
             ]);
 
-        $students = Student::select('full_name', 'national_student_number')
-            ->orderBy('full_name')
+        $students = DB::table('ref_students')
+            ->leftJoin('ref_student_academic_years', function ($j) {
+                $j->on('ref_students.id', '=', 'ref_student_academic_years.student_id')
+                    ->whereNull('ref_student_academic_years.mutation_date');
+            })
+            ->leftJoin('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+            ->select(
+                'ref_students.full_name',
+                'ref_students.student_number',
+                'ref_classes.academic_level',
+                'ref_classes.name as class_name'
+            )
+            ->orderBy('ref_students.full_name')
             ->get()
-            ->map(fn ($s) => [
-                'name' => $s->full_name,
-                'type' => 'Siswa',
-                'info' => $s->national_student_number ? "NISN: {$s->national_student_number}" : 'Siswa SMKN 1 Talaga',
-            ]);
+            ->unique('full_name')
+            ->map(function ($s) {
+                $classInfo = $s->class_name ? ($s->academic_level ? "Kelas {$s->academic_level} {$s->class_name}" : "Kelas {$s->class_name}") : null;
+                $nisInfo = $s->student_number ? "NIS: {$s->student_number}" : null;
+                $info = $classInfo && $nisInfo ? "{$classInfo} | {$nisInfo}" : ($classInfo ?? ($nisInfo ?? 'Siswa SMKN 1 Talaga'));
+
+                return [
+                    'name' => $s->full_name,
+                    'type' => 'Siswa',
+                    'info' => $info,
+                ];
+            });
 
         return $employees->concat($additionalTeachers)->concat($students)->values()->toArray();
     }
@@ -63,18 +80,53 @@ class CandidateController extends Controller
             $query->orderBy('candidate_number', 'asc');
         }])->findOrFail($electionId);
 
+        $candidateNames = [];
+        foreach ($election->candidates as $c) {
+            $candidateNames[] = trim($c->chairman_name);
+            if ($c->vice_chairman_name) {
+                $candidateNames[] = trim($c->vice_chairman_name);
+            }
+        }
+        $candidateNames = array_unique(array_filter($candidateNames));
+
+        $candidateClassMap = [];
+        if (! empty($candidateNames)) {
+            $candClassRows = DB::table('ref_students')
+                ->join('ref_student_academic_years', 'ref_students.id', '=', 'ref_student_academic_years.student_id')
+                ->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+                ->whereIn('ref_students.full_name', $candidateNames)
+                ->whereNull('ref_student_academic_years.mutation_date');
+
+            if ($election->academic_year) {
+                $candClassRows->where('ref_student_academic_years.academic_year', $election->academic_year);
+            }
+
+            $candClassRows = $candClassRows->select(
+                'ref_students.full_name',
+                'ref_classes.academic_level',
+                'ref_classes.name as class_name'
+            )->get();
+
+            foreach ($candClassRows as $row) {
+                $levelStr = $row->academic_level ? "Kelas {$row->academic_level} " : 'Kelas ';
+                $candidateClassMap[trim($row->full_name)] = trim($levelStr.$row->class_name);
+            }
+        }
+
         return Inertia::render('Admin/Candidates/Index', [
             'election' => [
                 'id' => $election->id,
                 'title' => $election->title,
                 'type' => $election->type,
             ],
-            'candidates' => $election->candidates->map(function ($candidate) {
+            'candidates' => $election->candidates->map(function ($candidate) use ($candidateClassMap) {
                 return [
                     'id' => $candidate->id,
                     'candidate_number' => $candidate->candidate_number,
                     'chairman_name' => $candidate->chairman_name,
+                    'chairman_class' => $candidateClassMap[trim($candidate->chairman_name)] ?? null,
                     'vice_chairman_name' => $candidate->vice_chairman_name,
+                    'vice_chairman_class' => $candidate->vice_chairman_name ? ($candidateClassMap[trim($candidate->vice_chairman_name)] ?? null) : null,
                     'photo' => $candidate->photo,
                     'vision_mission' => $candidate->vision_mission,
                 ];

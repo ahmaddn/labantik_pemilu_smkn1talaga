@@ -71,11 +71,24 @@ class DashboardController extends Controller
         // User detail string (e.g. Class for student or NIP for teacher)
         $userSubtext = '';
         if ($user->isStudent() && $user->student) {
-            $activeYear = $user->student->activeAcademicYear();
-            if ($activeYear && $activeYear->schoolClass) {
-                $userSubtext = 'Kelas: '.$activeYear->schoolClass->name;
+            $activeYear = DB::table('ref_student_academic_years')
+                ->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+                ->where('ref_student_academic_years.student_id', $user->student->id)
+                ->whereNull('ref_student_academic_years.mutation_date')
+                ->orderBy('ref_student_academic_years.academic_year', 'desc')
+                ->select('ref_classes.academic_level', 'ref_classes.name as class_name')
+                ->first();
+
+            $levelPrefix = $activeYear && $activeYear->academic_level ? "Kelas {$activeYear->academic_level} " : 'Kelas ';
+            $classText = $activeYear ? trim($levelPrefix.$activeYear->class_name) : null;
+            $nisText = $user->student->student_number ? "NIS: {$user->student->student_number}" : null;
+
+            if ($classText && $nisText) {
+                $userSubtext = "{$classText} | {$nisText}";
+            } elseif ($classText) {
+                $userSubtext = $classText;
             } else {
-                $userSubtext = 'NIS: '.$user->student->student_number;
+                $userSubtext = $nisText ?? 'Siswa';
             }
         } elseif ($user->isTeacher()) {
             if ($user->employee && ! empty($user->employee->nip)) {

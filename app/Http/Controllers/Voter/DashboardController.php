@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ElectionEvote;
 use App\Models\SimulationVote;
 use App\Models\VoterAccessEvote;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 

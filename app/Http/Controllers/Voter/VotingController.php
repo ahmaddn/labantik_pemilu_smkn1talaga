@@ -112,7 +112,7 @@ class VotingController extends Controller
                 'type' => $election->type,
                 'is_multi_stage' => $election->is_multi_stage,
                 'is_simulation' => $isSimulationMode,
-                'max_votes_per_voter' => $election->max_votes_per_voter ?? 1,
+                'max_votes_per_voter' => $election->getMaxVotesForStage($election->current_stage),
                 'current_stage' => $election->current_stage,
                 'total_stages' => $election->total_stages,
                 'end_at' => $effectiveEndTime,
@@ -139,7 +139,7 @@ class VotingController extends Controller
             }
         }
 
-        $maxVotes = $election->max_votes_per_voter ?? 1;
+        $maxVotes = $election->getMaxVotesForStage($election->current_stage);
 
         $validated = $request->validate([
             'candidate_id' => ['required_without:candidate_ids', 'nullable', 'string', 'exists:candidates_evote,id'],

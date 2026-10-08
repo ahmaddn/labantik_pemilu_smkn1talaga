@@ -119,6 +119,8 @@ class ResultController extends Controller
                 'end_at' => $election->end_at->toIso8601String(),
                 'is_published' => $election->is_published,
                 'is_multi_stage' => $election->is_multi_stage,
+                'max_votes_per_voter' => $election->max_votes_per_voter ?? 1,
+                'stage_schedules' => $election->stage_schedules ?? [],
                 'current_stage' => $election->current_stage,
                 'total_stages' => $election->total_stages,
                 'status' => $election->status,
@@ -145,6 +147,7 @@ class ResultController extends Controller
             'qualifiers_count' => ['required_if:mode,auto', 'nullable', 'integer', 'min:1'],
             'selected_candidate_ids' => ['required_if:mode,manual', 'nullable', 'array'],
             'selected_candidate_ids.*' => ['string', 'exists:candidates_evote,id'],
+            'max_votes_per_voter' => ['nullable', 'integer', 'min:1', 'max:20'],
             'schedule_option' => ['nullable', 'in:now,custom'],
             'start_at' => ['required_if:schedule_option,custom', 'nullable', 'date'],
             'end_at' => ['nullable', 'date'],
@@ -213,6 +216,18 @@ class ResultController extends Controller
         $election->current_stage = $nextStage;
         if ($nextStage > $election->total_stages) {
             $election->total_stages = $nextStage;
+        }
+
+        $schedules = $election->stage_schedules ?? [];
+        if (! is_array($schedules)) {
+            $schedules = [];
+        }
+
+        if (isset($validated['max_votes_per_voter'])) {
+            $stageMaxVotes = (int) $validated['max_votes_per_voter'];
+            $schedules[(string) $nextStage]['max_votes'] = $stageMaxVotes;
+            $election->stage_schedules = $schedules;
+            $election->max_votes_per_voter = $stageMaxVotes;
         }
 
         $scheduleOption = $validated['schedule_option'] ?? 'now';

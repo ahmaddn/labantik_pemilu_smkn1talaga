@@ -732,6 +732,30 @@
                                          class="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                      />
                                  </div>
+
+                                 <!-- Kuota Suara / Max Votes Per Voter untuk Tahap Baru -->
+                                 <div class="space-y-1.5 rounded-xl border border-blue-200/60 bg-blue-50/60 p-3 pt-2.5 dark:border-blue-900/40 dark:bg-blue-950/40">
+                                     <div class="flex items-center justify-between gap-3">
+                                         <div>
+                                             <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                                                 Batas Pilihan Suara Pemilih di Tahap {{ election.current_stage + 1 }}:
+                                             </label>
+                                             <span class="block text-[11px] text-slate-500 dark:text-slate-400">
+                                                 Tentukan berapa banyak kandidat yang boleh dicoblos pemilih pada tahap ini (misal 1 paslon).
+                                             </span>
+                                         </div>
+                                         <div class="flex items-center gap-1.5 shrink-0">
+                                             <input
+                                                 type="number"
+                                                 min="1"
+                                                 max="20"
+                                                 v-model.number="nextMaxVotes"
+                                                 class="w-18 rounded-lg border border-slate-300 bg-white p-2 text-center text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                             />
+                                             <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Suara</span>
+                                         </div>
+                                     </div>
+                                 </div>
                              </div>
 
                              <div
@@ -774,7 +798,7 @@
  </template>
 
  <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
  import {
      ArrowLeft,
@@ -815,6 +839,8 @@ import { router, Link } from '@inertiajs/vue3';
          total_votes: number;
          total_voters: number;
          turnout_percentage: number;
+         max_votes_per_voter?: number;
+         stage_schedules?: Record<string | number, { max_votes: number }>;
      };
      selectedStage: number;
      activeQualifiedCount: number;
@@ -834,6 +860,10 @@ import { router, Link } from '@inertiajs/vue3';
  const scheduleOption = ref<'now' | 'custom'>('now');
  const nextStartAt = ref<string>('');
  const nextEndAt = ref<string>('');
+ const nextStageNum = computed(() => (props.election.current_stage || 1) + 1);
+ const nextMaxVotes = ref<number>(
+     props.election.stage_schedules?.[nextStageNum.value]?.max_votes ?? 1,
+ );
 
  const changeStage = (stageNum: number) => {
      router.get(
@@ -854,6 +884,7 @@ import { router, Link } from '@inertiajs/vue3';
              mode: advanceMode.value,
              qualifiers_count: qualifiersCount.value,
              selected_candidate_ids: selectedCandidateIds.value,
+             max_votes_per_voter: nextMaxVotes.value,
              schedule_option: scheduleOption.value,
              start_at: nextStartAt.value,
              end_at: nextEndAt.value,

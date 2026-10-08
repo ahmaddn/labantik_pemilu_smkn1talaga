@@ -63,8 +63,13 @@ class VoterAccessController extends Controller
             })
             ->leftJoin('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id');
 
+        // Filter Kelas jika dipilih
         if (! empty($classFilter)) {
-            $query->where('ref_classes.name', $classFilter);
+            $query->where(function ($cq) use ($classFilter) {
+                $cq->where('ref_classes.id', $classFilter)
+                    ->orWhere('ref_classes.name', $classFilter)
+                    ->orWhereRaw("TRIM(CONCAT(COALESCE(ref_classes.academic_level, ''), ' ', ref_classes.name)) = ?", [$classFilter]);
+            });
         }
 
         $query->select(
@@ -124,12 +129,32 @@ class VoterAccessController extends Controller
             'total_voted' => VoterAccessEvote::where('election_id', $electionId)->where('is_voted', true)->count(),
         ];
 
-        // Daftar nama kelas untuk pilihan filter
-        $availableClasses = DB::table('ref_classes')
+        // Daftar kelas lengkap dengan academic_level (difilter tahun ajaran pemilihan jika ada)
+        $classesQuery = DB::table('ref_classes')
             ->orderBy('academic_level')
-            ->orderBy('name')
-            ->pluck('name')
-            ->unique()
+            ->orderBy('name');
+
+        if ($election->academic_year) {
+            $classesQuery->where(function ($q) use ($election) {
+                $q->where('academic_year', $election->academic_year)
+                    ->orWhereNull('academic_year');
+            });
+        }
+
+        $availableClasses = $classesQuery->get(['id', 'academic_level', 'name'])
+            ->map(function ($c) {
+                $fullLabel = $c->academic_level ? "Kelas {$c->academic_level} {$c->name}" : "Kelas {$c->name}";
+                $shortName = $c->academic_level ? "{$c->academic_level} {$c->name}" : $c->name;
+
+                return [
+                    'id' => $c->id,
+                    'academic_level' => $c->academic_level,
+                    'name' => $c->name,
+                    'value' => $shortName,
+                    'label' => $fullLabel,
+                ];
+            })
+            ->unique('value')
             ->values()
             ->toArray();
 
@@ -349,6 +374,7 @@ class VoterAccessController extends Controller
         $existingUserIds = VoterAccessEvote::where('election_id', $electionId)->pluck('user_id')->toArray();
 
         $targetVoter = $election->target_voter;
+        $classFilter = trim((string) $request->input('class', ''));
 
         $usersQuery = DB::table('core_users')
             ->leftJoin('ref_students', 'core_users.id', '=', 'ref_students.user_id')
@@ -365,8 +391,27 @@ class VoterAccessController extends Controller
 
         // Filter sesuai target_voter:
         if ($targetVoter === 'student') {
-            // Hanya siswa (memiliki catatan siswa di ref_students)
-            $usersQuery->whereNotNull('ref_students.id');
+            // Hanya siswa aktif di tahun ajaran pemilihan
+            $studentQuery = DB::table('ref_students')
+                ->join('ref_student_academic_years', 'ref_students.id', '=', 'ref_student_academic_years.student_id')
+                ->whereNotNull('ref_students.user_id')
+                ->whereNull('ref_student_academic_years.mutation_date');
+
+            if ($election->academic_year) {
+                $studentQuery->where('ref_student_academic_years.academic_year', $election->academic_year);
+            }
+
+            if (! empty($classFilter)) {
+                $studentQuery->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+                    ->where(function ($cq) use ($classFilter) {
+                        $cq->where('ref_classes.id', $classFilter)
+                            ->orWhere('ref_classes.name', $classFilter)
+                            ->orWhereRaw("TRIM(CONCAT(COALESCE(ref_classes.academic_level, ''), ' ', ref_classes.name)) = ?", [$classFilter]);
+                    });
+            }
+
+            $studentUserIds = $studentQuery->pluck('ref_students.user_id')->unique()->toArray();
+            $usersQuery->whereIn('core_users.id', $studentUserIds);
         } elseif ($targetVoter === 'teacher') {
             // Hanya guru murni (memiliki role Guru dan bukan siswa/tendik/admin lainnya)
             $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
@@ -392,24 +437,47 @@ class VoterAccessController extends Controller
             $usersQuery->whereIn('core_users.id', $teacherUserIds);
         } else {
             // 'all': Guru atau Siswa
-            $studentUserIds = DB::table('ref_students')->whereNotNull('user_id')->pluck('user_id')->toArray();
+            $studentQuery = DB::table('ref_students')
+                ->join('ref_student_academic_years', 'ref_students.id', '=', 'ref_student_academic_years.student_id')
+                ->whereNotNull('ref_students.user_id')
+                ->whereNull('ref_student_academic_years.mutation_date');
 
-            $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
-            $excludedUserIds = DB::table('assoc_user_roles')
-                ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                ->whereIn('core_roles.name', $excludedRoleNames)
-                ->pluck('assoc_user_roles.user_id')
-                ->unique()
-                ->toArray();
+            if ($election->academic_year) {
+                $studentQuery->where('ref_student_academic_years.academic_year', $election->academic_year);
+            }
 
-            $allTeacherExcludes = array_unique(array_merge($excludedUserIds, $studentUserIds));
-            $teacherUserIds = DB::table('assoc_user_roles')
-                ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                ->where('core_roles.name', 'Guru')
-                ->whereNotIn('assoc_user_roles.user_id', $allTeacherExcludes)
-                ->pluck('assoc_user_roles.user_id')
-                ->unique()
-                ->toArray();
+            if (! empty($classFilter)) {
+                $studentQuery->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+                    ->where(function ($cq) use ($classFilter) {
+                        $cq->where('ref_classes.id', $classFilter)
+                            ->orWhere('ref_classes.name', $classFilter)
+                            ->orWhereRaw("TRIM(CONCAT(COALESCE(ref_classes.academic_level, ''), ' ', ref_classes.name)) = ?", [$classFilter]);
+                    });
+            }
+
+            $studentUserIds = $studentQuery->pluck('ref_students.user_id')->unique()->toArray();
+
+            $teacherUserIds = [];
+            // Jika memfilter kelas, hanya siswa yang cocok
+            if (empty($classFilter)) {
+                $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
+                $excludedUserIds = DB::table('assoc_user_roles')
+                    ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
+                    ->whereIn('core_roles.name', $excludedRoleNames)
+                    ->pluck('assoc_user_roles.user_id')
+                    ->unique()
+                    ->toArray();
+
+                $allStudentUserIds = DB::table('ref_students')->whereNotNull('user_id')->pluck('user_id')->toArray();
+                $allTeacherExcludes = array_unique(array_merge($excludedUserIds, $allStudentUserIds));
+                $teacherUserIds = DB::table('assoc_user_roles')
+                    ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
+                    ->where('core_roles.name', 'Guru')
+                    ->whereNotIn('assoc_user_roles.user_id', $allTeacherExcludes)
+                    ->pluck('assoc_user_roles.user_id')
+                    ->unique()
+                    ->toArray();
+            }
 
             $allowedUserIds = array_unique(array_merge($studentUserIds, $teacherUserIds));
             $usersQuery->whereIn('core_users.id', $allowedUserIds);
@@ -424,7 +492,7 @@ class VoterAccessController extends Controller
             });
         }
 
-        $usersList = $usersQuery->limit(20)->get();
+        $usersList = $usersQuery->limit(30)->get();
 
         $studentUserIds = $usersList->pluck('id')->toArray();
         $classMap = [];

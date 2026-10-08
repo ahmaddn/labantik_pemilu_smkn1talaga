@@ -156,10 +156,10 @@
                                 <option value="">Semua Kelas</option>
                                 <option
                                     v-for="cls in availableClasses"
-                                    :key="cls"
-                                    :value="cls"
+                                    :key="typeof cls === 'object' ? cls.value : cls"
+                                    :value="typeof cls === 'object' ? cls.value : cls"
                                 >
-                                    {{ cls }}
+                                    {{ typeof cls === 'object' ? cls.label : cls }}
                                 </option>
                             </select>
                         </div>
@@ -392,19 +392,39 @@
                     </div>
 
                     <div class="p-5 space-y-4">
-                        <!-- Search Box inside Modal -->
-                        <div class="relative">
-                            <Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <input
-                                v-model="userSearchQuery"
-                                type="text"
-                                placeholder="Ketik nama, NIS, NIP, atau email..."
-                                @input="searchEligibleUsers"
-                                class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 pr-8 pl-9 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-                            />
-                            <span v-if="isLoadingUsers" class="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-slate-400">
-                                <RefreshCw class="h-3.5 w-3.5 animate-spin" />
-                            </span>
+                        <!-- Search Box & Class Filter inside Modal -->
+                        <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                            <div class="relative flex-1">
+                                <Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    v-model="userSearchQuery"
+                                    type="text"
+                                    placeholder="Ketik nama, NIS, NIP, atau email..."
+                                    @input="searchEligibleUsers"
+                                    class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 pr-8 pl-9 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                                />
+                                <span v-if="isLoadingUsers" class="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-slate-400">
+                                    <RefreshCw class="h-3.5 w-3.5 animate-spin" />
+                                </span>
+                            </div>
+
+                            <!-- Filter Kelas per Siswa inside Modal -->
+                            <div v-if="election.target_voter !== 'teacher' && availableClasses && availableClasses.length > 0" class="sm:w-44">
+                                <select
+                                    v-model="modalClassFilter"
+                                    @change="searchEligibleUsers"
+                                    class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white cursor-pointer"
+                                >
+                                    <option value="">Semua Kelas</option>
+                                    <option
+                                        v-for="cls in availableClasses"
+                                        :key="typeof cls === 'object' ? cls.value : cls"
+                                        :value="typeof cls === 'object' ? cls.value : cls"
+                                    >
+                                        {{ typeof cls === 'object' ? cls.label : cls }}
+                                    </option>
+                                </select>
+                            </div>
                         </div>
 
                         <!-- User List Box -->
@@ -539,6 +559,7 @@ const selectedAccessToDelete = ref<any | null>(null);
 // State untuk Modal Pilih Pemilih Tertentu
 const showSelectModal = ref(false);
 const userSearchQuery = ref('');
+const modalClassFilter = ref('');
 const userCandidates = ref<any[]>([]);
 const selectedUserIds = ref<string[]>([]);
 const isLoadingUsers = ref(false);
@@ -548,6 +569,7 @@ let userSearchTimer: any = null;
 const openSelectModal = () => {
     showSelectModal.value = true;
     userSearchQuery.value = '';
+    modalClassFilter.value = '';
     selectedUserIds.value = [];
     searchEligibleUsers();
 };
@@ -556,6 +578,7 @@ const closeSelectModal = () => {
     showSelectModal.value = false;
     userCandidates.value = [];
     selectedUserIds.value = [];
+    modalClassFilter.value = '';
 };
 
 const searchEligibleUsers = () => {
@@ -563,8 +586,12 @@ const searchEligibleUsers = () => {
     userSearchTimer = setTimeout(async () => {
         isLoadingUsers.value = true;
         try {
+            const params = new URLSearchParams({
+                q: userSearchQuery.value,
+                class: modalClassFilter.value,
+            });
             const res = await fetch(
-                `/admin/pemilihan/${props.election.id}/pemilih/search-users?q=${encodeURIComponent(userSearchQuery.value)}`
+                `/admin/pemilihan/${props.election.id}/pemilih/search-users?${params.toString()}`
             );
             if (res.ok) {
                 userCandidates.value = await res.json();

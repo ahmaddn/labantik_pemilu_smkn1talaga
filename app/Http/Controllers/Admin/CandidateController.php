@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,7 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CandidateController extends Controller
 {
-    private function getPeopleList(): array
+    private function getPeopleList(?string $academicYear = null): array
     {
         $employeeNames = [];
         $employees = Employee::select('full_name', 'nip')
@@ -44,20 +45,24 @@ class CandidateController extends Controller
                 'info' => $u->email ? "Email: {$u->email}" : 'Guru / Staf SMKN 1 Talaga',
             ]);
 
-        $students = DB::table('ref_students')
-            ->leftJoin('ref_student_academic_years', function ($j) {
+        $studentQuery = DB::table('ref_students')
+            ->join('ref_student_academic_years', function ($j) use ($academicYear) {
                 $j->on('ref_students.id', '=', 'ref_student_academic_years.student_id')
                     ->whereNull('ref_student_academic_years.mutation_date');
+                if ($academicYear) {
+                    $j->where('ref_student_academic_years.academic_year', $academicYear);
+                }
             })
-            ->leftJoin('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
+            ->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
             ->select(
                 'ref_students.full_name',
                 'ref_students.student_number',
                 'ref_classes.academic_level',
                 'ref_classes.name as class_name'
             )
-            ->orderBy('ref_students.full_name')
-            ->get()
+            ->orderBy('ref_students.full_name');
+
+        $students = $studentQuery->get()
             ->unique('full_name')
             ->map(function ($s) {
                 $classInfo = $s->class_name ? ($s->academic_level ? "Kelas {$s->academic_level} {$s->class_name}" : "Kelas {$s->class_name}") : null;
@@ -145,7 +150,7 @@ class CandidateController extends Controller
                 'type' => $election->type,
                 'next_number' => $election->candidates_count + 1,
             ],
-            'people' => $this->getPeopleList(),
+            'people' => $this->getPeopleList($election->academic_year),
         ]);
     }
 
@@ -198,7 +203,7 @@ class CandidateController extends Controller
                 'photo' => $candidate->photo,
                 'vision_mission' => $candidate->vision_mission,
             ],
-            'people' => $this->getPeopleList(),
+            'people' => $this->getPeopleList($election->academic_year),
         ]);
     }
 

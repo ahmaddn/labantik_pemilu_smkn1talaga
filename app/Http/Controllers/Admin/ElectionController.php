@@ -107,6 +107,13 @@ class ElectionController extends Controller
         $validated['total_stages'] = $validated['is_multi_stage'] ? ($validated['total_stages'] ?? 2) : 1;
         $validated['current_stage'] = 1;
 
+        if ($validated['is_multi_stage'] && ! empty($validated['stage_schedules'])) {
+            $schedules = $validated['stage_schedules'];
+            if (isset($schedules['1']['max_votes'])) {
+                $validated['max_votes_per_voter'] = (int) $schedules['1']['max_votes'];
+            }
+        }
+
         ElectionEvote::create($validated);
 
         return redirect('/admin/pemilihan')->with('success', 'Pemilihan baru berhasil dibuat!');
@@ -175,6 +182,14 @@ class ElectionController extends Controller
         $validated['is_simulation'] = $request->boolean('is_simulation');
         $validated['max_votes_per_voter'] = (int) ($validated['max_votes_per_voter'] ?? 1);
         $validated['total_stages'] = $validated['is_multi_stage'] ? ($validated['total_stages'] ?? 2) : 1;
+
+        if ($validated['is_multi_stage'] && ! empty($validated['stage_schedules'])) {
+            $schedules = $validated['stage_schedules'];
+            $currentStageKey = (string) ($election->current_stage ?: 1);
+            if (isset($schedules[$currentStageKey]['max_votes'])) {
+                $validated['max_votes_per_voter'] = (int) $schedules[$currentStageKey]['max_votes'];
+            }
+        }
 
         $election->update($validated);
 

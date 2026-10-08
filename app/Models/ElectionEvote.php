@@ -70,6 +70,26 @@ class ElectionEvote extends Model
     }
 
     /**
+     * Get maximum votes allowed per voter for a specific stage or the active stage.
+     */
+    public function getMaxVotesForStage(?int $stage = null): int
+    {
+        $targetStage = $stage ?? ($this->current_stage ?: 1);
+
+        if ($this->is_multi_stage && is_array($this->stage_schedules)) {
+            $stageKey = (string) $targetStage;
+            if (isset($this->stage_schedules[$stageKey]['max_votes'])) {
+                return max(1, (int) $this->stage_schedules[$stageKey]['max_votes']);
+            }
+            if (isset($this->stage_schedules[$targetStage]['max_votes'])) {
+                return max(1, (int) $this->stage_schedules[$targetStage]['max_votes']);
+            }
+        }
+
+        return max(1, (int) ($this->max_votes_per_voter ?? 1));
+    }
+
+    /**
      * Compute dynamic simulation status based on simulation timestamps.
      */
     public function getSimulationStatusAttribute(): string

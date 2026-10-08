@@ -256,7 +256,7 @@
 
                     <!-- Jumlah Suara per Pemilih (Multi-Choice) Option -->
                     <div
-                        class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/60"
+                        class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/60"
                     >
                         <div class="flex items-center justify-between gap-4">
                             <div>
@@ -266,16 +266,57 @@
                                 >
                                 <span
                                     class="block text-[11px] text-slate-500 dark:text-slate-400"
-                                    >Isi <strong>1</strong> untuk memilih 1 paslon saja, atau ketik <strong>4</strong> (atau angka lainnya) jika 1 pemilih boleh mencoblos hingga N kandidat sekaligus.</span
+                                    >Isi <strong>1</strong> untuk memilih 1 paslon saja, atau ketik <strong>5</strong> jika boleh memilih beberapa kandidat sekaligus.</span
                                 >
                             </div>
                             <input
+                                v-if="!form.is_multi_stage"
                                 v-model.number="form.max_votes_per_voter"
                                 type="number"
                                 min="1"
                                 max="20"
                                 class="w-24 rounded-lg border border-slate-300 bg-white p-2 text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                             />
+                        </div>
+
+                        <!-- Pengaturan Kuota Suara per Tahap jika Multi-Stage Aktif -->
+                        <div
+                            v-if="form.is_multi_stage"
+                            class="mt-2 space-y-2 rounded-lg border border-blue-100 bg-white p-3 dark:border-blue-900/40 dark:bg-slate-900/80"
+                        >
+                            <span class="block text-xs font-bold text-blue-600 dark:text-blue-400">
+                                Atur Kuota Pilihan Suara per Tahap:
+                            </span>
+                            <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3">
+                                <div
+                                    v-for="stageNum in Math.min(Math.max(form.total_stages || 2, 2), 5)"
+                                    :key="stageNum"
+                                    class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/80"
+                                >
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                            Tahap {{ stageNum }}
+                                        </span>
+                                        <span class="text-[10px] text-slate-400">
+                                            {{ stageNum === 1 ? '(Putaran Awal)' : stageNum === form.total_stages ? '(Putaran Final)' : '(Penyaringan)' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="20"
+                                            :value="form.stage_schedules[stageNum]?.max_votes ?? (stageNum === 1 ? form.max_votes_per_voter : 1)"
+                                            @input="setStageMaxVotes(stageNum, Number(($event.target as HTMLInputElement).value))"
+                                            class="w-16 rounded border border-slate-300 bg-white p-1.5 text-center text-xs font-black text-slate-900 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                                        />
+                                        <span class="text-[11px] font-semibold text-slate-500">Suara</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                Contoh: Tahap 1 dapat memilih <strong>5</strong> kandidat, dan Tahap 2 (final) hanya <strong>1</strong> kandidat.
+                            </p>
                         </div>
                     </div>
 
@@ -389,7 +430,22 @@ const form = useForm({
     simulation_end_at: "",
     max_votes_per_voter: 1,
     total_stages: 2,
+    stage_schedules: {} as Record<string | number, { max_votes: number }>,
 });
+
+const setStageMaxVotes = (stage: number, value: number) => {
+    const val = Math.max(1, value || 1);
+    if (!form.stage_schedules) {
+        form.stage_schedules = {};
+    }
+    form.stage_schedules[stage] = {
+        ...(form.stage_schedules[stage] || {}),
+        max_votes: val,
+    };
+    if (stage === 1) {
+        form.max_votes_per_voter = val;
+    }
+};
 
 const submit = () => {
     form.post("/admin/pemilihan");

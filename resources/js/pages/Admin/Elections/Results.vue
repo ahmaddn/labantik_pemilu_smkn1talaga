@@ -383,7 +383,8 @@
                             class="border-b border-slate-200 bg-slate-50 font-bold tracking-wider text-slate-600 uppercase dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400"
                         >
                             <tr>
-                                <th class="w-20 p-4 pl-6 text-center">No Paslon</th>
+                                <th class="w-16 p-4 pl-6 text-center">Rank</th>
+                                <th class="w-24 p-4 text-center">No Paslon</th>
                                 <th class="p-4">Pasangan Calon</th>
                                 <th class="w-72 p-4">Visualisasi & Distribusi Suara</th>
                                 <th class="w-28 p-4 text-center">Jumlah Suara</th>
@@ -393,7 +394,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                             <tr
-                                v-for="(candidate, index) in results"
+                                v-for="(candidate, index) in sortedTableResults"
                                 :key="candidate.id"
                                 :class="[
                                     'transition-colors',
@@ -402,16 +403,32 @@
                                         : 'hover:bg-slate-50/80 dark:hover:bg-slate-700/40',
                                 ]"
                             >
-                                <!-- No Paslon -->
+                                <!-- Rank Peringkat Berdasarkan Suara Terbanyak -->
                                 <td class="p-4 pl-6 text-center">
+                                    <span
+                                        :class="[
+                                            'inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black shadow-xs',
+                                            index === 0 && candidate.votes_count > 0
+                                                ? 'bg-amber-400 text-slate-950 font-black'
+                                                : index === 1 && candidate.votes_count > 0
+                                                  ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                                                  : index === 2 && candidate.votes_count > 0
+                                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                                                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+                                        ]"
+                                    >
+                                        #{{ index + 1 }}
+                                    </span>
+                                </td>
+
+                                <!-- No Paslon -->
+                                <td class="p-4 text-center">
                                     <span
                                         :class="[
                                             'inline-flex h-9 w-9 items-center justify-center rounded-xl text-sm font-black shadow-xs',
                                             candidate.is_qualified === false
                                                 ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                : index === 0 && candidate.votes_count > 0
-                                                    ? 'bg-amber-400 text-slate-950'
-                                                    : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900',
+                                                : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900',
                                         ]"
                                     >
                                         {{ candidate.candidate_number }}
@@ -470,7 +487,7 @@
                                                     'h-full rounded-full transition-all duration-700 ease-out shadow-xs',
                                                     candidate.is_qualified === false
                                                         ? 'bg-slate-400 dark:bg-slate-600'
-                                                        : `bg-gradient-to-r ${getCandidateColor(index, 'bar')}`,
+                                                        : `bg-gradient-to-r ${getCandidateColor(Number(candidate.candidate_number) - 1, 'bar')}`,
                                                 ]"
                                                 :style="{ width: `${candidate.percentage}%` }"
                                             ></div>
@@ -509,8 +526,7 @@
                                     </span>
                                     <span
                                         v-else-if="
-                                            leadingCandidate &&
-                                            leadingCandidate.id === candidate.id &&
+                                            index === 0 &&
                                             candidate.votes_count > 0 &&
                                             (!election.is_multi_stage || election.current_stage >= election.total_stages)
                                         "
@@ -520,11 +536,7 @@
                                         <span>Juara 1 (Pemenang)</span>
                                     </span>
                                     <span
-                                        v-else-if="
-                                            leadingCandidate &&
-                                            leadingCandidate.id === candidate.id &&
-                                            candidate.votes_count > 0
-                                        "
+                                        v-else-if="index === 0 && candidate.votes_count > 0"
                                         class="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1 text-[11px] font-extrabold text-amber-900 uppercase dark:bg-amber-950/80 dark:text-amber-300"
                                     >
                                         <Trophy class="h-3.5 w-3.5 text-amber-600" />
@@ -916,6 +928,27 @@ import { router, Link } from '@inertiajs/vue3';
      props.election.stage_schedules?.[nextStageNum.value]?.max_votes ?? 1,
  );
  const nextSelectionMode = ref<'max' | 'exact'>('max');
+
+ // Urutkan kandidat khusus untuk Tabel Rekapitulasi:
+ // 1. Berdasarkan jumlah suara terbanyak (votes_count DESC)
+ // 2. Jika sama, paslon aktif (is_qualified) didahulukan daripada yang gugur
+ // 3. Jika sama, urutkan berdasarkan nomor urut paslon terkecil (candidate_number ASC)
+ const sortedTableResults = computed(() => {
+     if (!props.results) return [];
+     return [...props.results].sort((a, b) => {
+         const votesA = Number(a.votes_count) || 0;
+         const votesB = Number(b.votes_count) || 0;
+         if (votesB !== votesA) {
+             return votesB - votesA;
+         }
+         const qualA = a.is_qualified !== false ? 1 : 0;
+         const qualB = b.is_qualified !== false ? 1 : 0;
+         if (qualB !== qualA) {
+             return qualB - qualA;
+         }
+         return (Number(a.candidate_number) || 0) - (Number(b.candidate_number) || 0);
+     });
+ });
 
  const changeStage = (stageNum: number) => {
      router.get(

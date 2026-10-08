@@ -149,6 +149,7 @@ class ResultController extends Controller
             'selected_candidate_ids' => ['required_if:mode,manual', 'nullable', 'array'],
             'selected_candidate_ids.*' => ['string', 'exists:candidates_evote,id'],
             'max_votes_per_voter' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'vote_selection_mode' => ['nullable', 'in:max,exact'],
             'schedule_option' => ['nullable', 'in:now,custom'],
             'start_at' => ['required_if:schedule_option,custom', 'nullable', 'date'],
             'end_at' => ['nullable', 'date'],
@@ -226,9 +227,12 @@ class ResultController extends Controller
 
         if (isset($validated['max_votes_per_voter'])) {
             $stageMaxVotes = (int) $validated['max_votes_per_voter'];
+            $stageSelectionMode = $validated['vote_selection_mode'] ?? 'max';
             $schedules[(string) $nextStage]['max_votes'] = $stageMaxVotes;
+            $schedules[(string) $nextStage]['selection_mode'] = $stageSelectionMode;
             $election->stage_schedules = $schedules;
             $election->max_votes_per_voter = $stageMaxVotes;
+            $election->vote_selection_mode = $stageSelectionMode;
         }
 
         $scheduleOption = $validated['schedule_option'] ?? 'now';

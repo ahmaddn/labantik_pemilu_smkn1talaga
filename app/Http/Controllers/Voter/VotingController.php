@@ -113,6 +113,7 @@ class VotingController extends Controller
                 'is_multi_stage' => $election->is_multi_stage,
                 'is_simulation' => $isSimulationMode,
                 'max_votes_per_voter' => $election->getMaxVotesForStage($election->current_stage),
+                'vote_selection_mode' => $election->getVoteSelectionModeForStage($election->current_stage),
                 'current_stage' => $election->current_stage,
                 'total_stages' => $election->total_stages,
                 'end_at' => $effectiveEndTime,
@@ -140,6 +141,7 @@ class VotingController extends Controller
         }
 
         $maxVotes = $election->getMaxVotesForStage($election->current_stage);
+        $selectionMode = $election->getVoteSelectionModeForStage($election->current_stage);
 
         $validated = $request->validate([
             'candidate_id' => ['required_without:candidate_ids', 'nullable', 'string', 'exists:candidates_evote,id'],
@@ -158,6 +160,10 @@ class VotingController extends Controller
 
         if (empty($candidateIds)) {
             return back()->withErrors(['vote' => 'Silakan pilih setidaknya 1 kandidat.']);
+        }
+
+        if ($selectionMode === 'exact' && count($candidateIds) !== $maxVotes) {
+            return back()->withErrors(['vote' => "Pemilihan ini mewajibkan Anda untuk memilih tepat {$maxVotes} kandidat (saat ini Anda memilih ".count($candidateIds).').']);
         }
 
         if (count($candidateIds) > $maxVotes) {

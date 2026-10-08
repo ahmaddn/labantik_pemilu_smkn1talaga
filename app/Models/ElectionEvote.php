@@ -30,6 +30,7 @@ class ElectionEvote extends Model
         'simulation_start_at',
         'simulation_end_at',
         'max_votes_per_voter',
+        'vote_selection_mode',
         'current_stage',
         'total_stages',
         'stage_schedules',
@@ -87,6 +88,26 @@ class ElectionEvote extends Model
         }
 
         return max(1, (int) ($this->max_votes_per_voter ?? 1));
+    }
+
+    /**
+     * Get vote selection mode ('max' = fleksibel hingga N, 'exact' = wajib tepat pas N)
+     */
+    public function getVoteSelectionModeForStage(?int $stage = null): string
+    {
+        $targetStage = $stage ?? ($this->current_stage ?: 1);
+
+        if ($this->is_multi_stage && is_array($this->stage_schedules)) {
+            $stageKey = (string) $targetStage;
+            if (isset($this->stage_schedules[$stageKey]['selection_mode'])) {
+                return $this->stage_schedules[$stageKey]['selection_mode'] === 'exact' ? 'exact' : 'max';
+            }
+            if (isset($this->stage_schedules[$targetStage]['selection_mode'])) {
+                return $this->stage_schedules[$targetStage]['selection_mode'] === 'exact' ? 'exact' : 'max';
+            }
+        }
+
+        return ($this->vote_selection_mode ?? 'max') === 'exact' ? 'exact' : 'max';
     }
 
     /**

@@ -259,6 +259,9 @@
                 </p>
             </div>
         </footer>
+
+        <!-- Floating Toast Notification System -->
+        <ToastNotification />
     </div>
 </template>
 
@@ -276,6 +279,7 @@ import {
     Info,
 } from '@lucide/vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import ToastNotification from '@/Components/ToastNotification.vue';
 
 const props = defineProps({
     title: {

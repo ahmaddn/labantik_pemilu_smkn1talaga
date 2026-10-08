@@ -258,25 +258,78 @@
                     <div
                         class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/60"
                     >
-                        <div class="flex items-center justify-between gap-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
                                 <span
                                     class="block text-xs font-bold text-slate-900 dark:text-white"
-                                    >Jumlah Maksimal Suara Diberikan per Pemilih (Pilihan Ganda / Multi-Choice)</span
+                                    >Jumlah Pilihan Suara per Pemilih (Multi-Choice)</span
                                 >
                                 <span
                                     class="block text-[11px] text-slate-500 dark:text-slate-400"
-                                    >Isi <strong>1</strong> untuk memilih 1 paslon saja, atau ketik <strong>5</strong> jika boleh memilih beberapa kandidat sekaligus.</span
+                                    >Tentukan kuota berapa paslon yang dapat dicoblos (misal: 1 paslon atau 5 paslon).</span
                                 >
                             </div>
-                            <input
-                                v-if="!form.is_multi_stage"
-                                v-model.number="form.max_votes_per_voter"
-                                type="number"
-                                min="1"
-                                max="20"
-                                class="w-24 rounded-lg border border-slate-300 bg-white p-2 text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                            />
+                            <div v-if="!form.is_multi_stage" class="flex items-center gap-2">
+                                <input
+                                    v-model.number="form.max_votes_per_voter"
+                                    type="number"
+                                    min="1"
+                                    max="20"
+                                    class="w-24 rounded-lg border border-slate-300 bg-white p-2 text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                />
+                                <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Suara</span>
+                            </div>
+                        </div>
+
+                        <!-- Opsi Aturan Pemilihan: Wajib Pas vs Maksimal (Bebas) -->
+                        <div
+                            v-if="!form.is_multi_stage && form.max_votes_per_voter > 1"
+                            class="rounded-lg border border-blue-200/60 bg-blue-50/50 p-3 dark:border-blue-900/40 dark:bg-blue-950/30 space-y-2"
+                        >
+                            <span class="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                                Aturan Pemilihan {{ form.max_votes_per_voter }} Suara:
+                            </span>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <label
+                                    :class="[
+                                        'flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-all',
+                                        form.vote_selection_mode === 'max'
+                                            ? 'border-blue-500 bg-white shadow-xs dark:border-blue-500 dark:bg-slate-900'
+                                            : 'border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400',
+                                    ]"
+                                >
+                                    <input
+                                        type="radio"
+                                        value="max"
+                                        v-model="form.vote_selection_mode"
+                                        class="mt-0.5 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <div>
+                                        <strong class="block text-slate-900 dark:text-white">Maksimal {{ form.max_votes_per_voter }} (Fleksibel)</strong>
+                                        <span class="text-[11px] text-slate-500 dark:text-slate-400">Pemilih bebas memilih antara 1 sampai {{ form.max_votes_per_voter }} kandidat.</span>
+                                    </div>
+                                </label>
+
+                                <label
+                                    :class="[
+                                        'flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-all',
+                                        form.vote_selection_mode === 'exact'
+                                            ? 'border-blue-500 bg-white shadow-xs dark:border-blue-500 dark:bg-slate-900'
+                                            : 'border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400',
+                                    ]"
+                                >
+                                    <input
+                                        type="radio"
+                                        value="exact"
+                                        v-model="form.vote_selection_mode"
+                                        class="mt-0.5 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <div>
+                                        <strong class="block text-slate-900 dark:text-white">Harus Tepat {{ form.max_votes_per_voter }} (Wajib Pas)</strong>
+                                        <span class="text-[11px] text-slate-500 dark:text-slate-400">Pemilih <strong>wajib mencoblos pas {{ form.max_votes_per_voter }}</strong> kandidat, tidak boleh kurang.</span>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
 
                         <!-- Pengaturan Kuota Suara per Tahap jika Multi-Stage Aktif -->
@@ -291,34 +344,46 @@
                                 <div
                                     v-for="stageNum in Math.min(Math.max(form.total_stages || 2, 2), 5)"
                                     :key="stageNum"
-                                    class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/80"
+                                    class="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-2.5 dark:border-slate-700 dark:bg-slate-800/80"
                                 >
-                                    <div class="flex flex-col">
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                                Tahap {{ stageNum }}
-                                            </span>
-                                            <span
-                                                v-if="stageNum === election.current_stage"
-                                                class="rounded bg-blue-100 px-1 py-0.2 text-[9px] font-black text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                                            >
-                                                Aktif
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex flex-col">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                                    Tahap {{ stageNum }}
+                                                </span>
+                                                <span
+                                                    v-if="stageNum === election.current_stage"
+                                                    class="rounded bg-blue-100 px-1 py-0.2 text-[9px] font-black text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                                                >
+                                                    Aktif
+                                                </span>
+                                            </div>
+                                            <span class="text-[10px] text-slate-400">
+                                                {{ stageNum === 1 ? '(Putaran Awal)' : stageNum === form.total_stages ? '(Putaran Final)' : '(Penyaringan)' }}
                                             </span>
                                         </div>
-                                        <span class="text-[10px] text-slate-400">
-                                            {{ stageNum === 1 ? '(Putaran Awal)' : stageNum === form.total_stages ? '(Putaran Final)' : '(Penyaringan)' }}
-                                        </span>
+                                        <div class="flex items-center gap-1.5">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="20"
+                                                :value="form.stage_schedules[stageNum]?.max_votes ?? (stageNum === election.current_stage ? form.max_votes_per_voter : 1)"
+                                                @input="setStageMaxVotes(stageNum, Number(($event.target as HTMLInputElement).value))"
+                                                class="w-14 rounded border border-slate-300 bg-white p-1 text-center text-xs font-black text-slate-900 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                                            />
+                                            <span class="text-[11px] font-semibold text-slate-500">Suara</span>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max="20"
-                                            :value="form.stage_schedules[stageNum]?.max_votes ?? (stageNum === election.current_stage ? form.max_votes_per_voter : 1)"
-                                            @input="setStageMaxVotes(stageNum, Number(($event.target as HTMLInputElement).value))"
-                                            class="w-16 rounded border border-slate-300 bg-white p-1.5 text-center text-xs font-black text-slate-900 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                                        />
-                                        <span class="text-[11px] font-semibold text-slate-500">Suara</span>
+                                    <div v-if="(form.stage_schedules[stageNum]?.max_votes ?? (stageNum === election.current_stage ? form.max_votes_per_voter : 1)) > 1" class="pt-1 border-t border-slate-200/60 dark:border-slate-700">
+                                        <select
+                                            :value="form.stage_schedules[stageNum]?.selection_mode ?? (stageNum === election.current_stage ? form.vote_selection_mode : 'max')"
+                                            @change="setStageSelectionMode(stageNum, ($event.target as HTMLSelectElement).value)"
+                                            class="w-full rounded border border-slate-300 bg-white p-1 text-[11px] font-bold text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                                        >
+                                            <option value="max">Maksimal (Fleksibel)</option>
+                                            <option value="exact">Harus Tepat (Wajib Pas)</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -434,9 +499,10 @@ const props = defineProps<{
         simulation_start_at?: string;
         simulation_end_at?: string;
         max_votes_per_voter?: number;
+        vote_selection_mode?: string;
         current_stage?: number;
         total_stages?: number;
-        stage_schedules?: Record<string | number, { max_votes: number }>;
+        stage_schedules?: Record<string | number, { max_votes: number; selection_mode?: string }>;
     };
     academicYears: string[];
     classes: any[];
@@ -456,8 +522,9 @@ const form = useForm({
     simulation_start_at: props.election.simulation_start_at || "",
     simulation_end_at: props.election.simulation_end_at || "",
     max_votes_per_voter: props.election.max_votes_per_voter || 1,
+    vote_selection_mode: props.election.vote_selection_mode || "max",
     total_stages: props.election.total_stages || 2,
-    stage_schedules: { ...(props.election.stage_schedules || {}) } as Record<string | number, { max_votes: number }>,
+    stage_schedules: { ...(props.election.stage_schedules || {}) } as Record<string | number, { max_votes: number; selection_mode?: string }>,
 });
 
 const setStageMaxVotes = (stage: number, value: number) => {
@@ -471,6 +538,19 @@ const setStageMaxVotes = (stage: number, value: number) => {
     };
     if (stage === (props.election.current_stage || 1)) {
         form.max_votes_per_voter = val;
+    }
+};
+
+const setStageSelectionMode = (stage: number, mode: string) => {
+    if (!form.stage_schedules) {
+        form.stage_schedules = {};
+    }
+    form.stage_schedules[stage] = {
+        ...(form.stage_schedules[stage] || {}),
+        selection_mode: mode,
+    };
+    if (stage === (props.election.current_stage || 1)) {
+        form.vote_selection_mode = mode;
     }
 };
 

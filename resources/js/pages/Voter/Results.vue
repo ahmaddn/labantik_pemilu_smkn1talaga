@@ -46,7 +46,7 @@
             <!-- Results List per Candidate -->
             <div class="space-y-3">
                 <div
-                    v-for="item in results"
+                    v-for="(item, index) in results"
                     :key="item.id"
                     class="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
                 >
@@ -102,12 +102,12 @@
                         </div>
                     </div>
 
-                    <!-- Progress Bar (Solid Colors) -->
+                    <!-- Progress Bar (Colorful Dynamic Palette) -->
                     <div
                         class="h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"
                     >
                         <div
-                            class="h-full rounded-full bg-blue-600 transition-all duration-500"
+                            :class="['h-full rounded-full transition-all duration-500 shadow-xs', getVoterColor(index)]"
                             :style="{ width: `${item.percentage}%` }"
                         ></div>
                     </div>
@@ -133,4 +133,17 @@ defineProps<{
     };
     results: any[];
 }>();
+
+const VOTER_COLORS = [
+    'bg-gradient-to-r from-blue-600 to-indigo-600',
+    'bg-gradient-to-r from-emerald-500 to-teal-600',
+    'bg-gradient-to-r from-purple-600 to-fuchsia-600',
+    'bg-gradient-to-r from-amber-500 to-orange-500',
+    'bg-gradient-to-r from-rose-500 to-pink-600',
+    'bg-gradient-to-r from-cyan-500 to-sky-600',
+];
+
+const getVoterColor = (idx: number) => {
+    return VOTER_COLORS[idx % VOTER_COLORS.length];
+};
 </script>

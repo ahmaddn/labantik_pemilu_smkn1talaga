@@ -313,11 +313,7 @@
                                         'w-full rounded-xl transition-all duration-700 ease-out shadow-sm',
                                         candidate.is_qualified === false
                                             ? 'bg-slate-400 dark:bg-slate-600'
-                                            : index === 0 && candidate.votes_count > 0
-                                                ? 'bg-gradient-to-t from-blue-700 to-blue-500'
-                                                : index === 1 && candidate.votes_count > 0
-                                                    ? 'bg-gradient-to-t from-emerald-700 to-emerald-500'
-                                                    : 'bg-gradient-to-t from-indigo-600 to-cyan-500',
+                                            : `bg-gradient-to-t ${getCandidateColor(index, 'vert')}`,
                                     ]"
                                     :style="{
                                         height: `${Math.max(Number(candidate.percentage) || 0, candidate.votes_count > 0 ? 8 : 4)}%`,
@@ -474,11 +470,7 @@
                                                     'h-full rounded-full transition-all duration-700 ease-out shadow-xs',
                                                     candidate.is_qualified === false
                                                         ? 'bg-slate-400 dark:bg-slate-600'
-                                                        : index === 0 && candidate.votes_count > 0
-                                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600'
-                                                            : index === 1 && candidate.votes_count > 0
-                                                                ? 'bg-gradient-to-r from-emerald-500 to-teal-600'
-                                                                : 'bg-gradient-to-r from-sky-500 to-blue-500',
+                                                        : `bg-gradient-to-r ${getCandidateColor(index, 'bar')}`,
                                                 ]"
                                                 :style="{ width: `${candidate.percentage}%` }"
                                             ></div>
@@ -519,12 +511,24 @@
                                         v-else-if="
                                             leadingCandidate &&
                                             leadingCandidate.id === candidate.id &&
+                                            candidate.votes_count > 0 &&
+                                            (!election.is_multi_stage || election.current_stage >= election.total_stages)
+                                        "
+                                        class="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1 text-[11px] font-extrabold text-amber-900 uppercase dark:bg-amber-950/80 dark:text-amber-300"
+                                    >
+                                        <Trophy class="h-3.5 w-3.5 text-amber-600" />
+                                        <span>Juara 1 (Pemenang)</span>
+                                    </span>
+                                    <span
+                                        v-else-if="
+                                            leadingCandidate &&
+                                            leadingCandidate.id === candidate.id &&
                                             candidate.votes_count > 0
                                         "
                                         class="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1 text-[11px] font-extrabold text-amber-900 uppercase dark:bg-amber-950/80 dark:text-amber-300"
                                     >
                                         <Trophy class="h-3.5 w-3.5 text-amber-600" />
-                                        <span>Peringkat 1</span>
+                                        <span>Lolos (Peringkat 1)</span>
                                     </span>
                                     <span
                                         v-else
@@ -734,14 +738,14 @@
                                  </div>
 
                                  <!-- Kuota Suara / Max Votes Per Voter untuk Tahap Baru -->
-                                 <div class="space-y-1.5 rounded-xl border border-blue-200/60 bg-blue-50/60 p-3 pt-2.5 dark:border-blue-900/40 dark:bg-blue-950/40">
+                                 <div class="space-y-3 rounded-xl border border-blue-200/60 bg-blue-50/60 p-3 pt-2.5 dark:border-blue-900/40 dark:bg-blue-950/40">
                                      <div class="flex items-center justify-between gap-3">
                                          <div>
                                              <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">
                                                  Batas Pilihan Suara Pemilih di Tahap {{ election.current_stage + 1 }}:
                                              </label>
                                              <span class="block text-[11px] text-slate-500 dark:text-slate-400">
-                                                 Tentukan berapa banyak kandidat yang boleh dicoblos pemilih pada tahap ini (misal 1 paslon).
+                                                 Tentukan berapa banyak kandidat yang boleh dicoblos pemilih pada tahap ini.
                                              </span>
                                          </div>
                                          <div class="flex items-center gap-1.5 shrink-0">
@@ -753,6 +757,53 @@
                                                  class="w-18 rounded-lg border border-slate-300 bg-white p-2 text-center text-xs font-extrabold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                              />
                                              <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Suara</span>
+                                         </div>
+                                     </div>
+
+                                     <!-- Aturan Fleksibilitas Pilihan -->
+                                     <div v-if="nextMaxVotes > 1" class="border-t border-blue-200/50 pt-2.5 dark:border-blue-900/30">
+                                         <label class="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                                             Aturan Pemilihan Suara di Tahap {{ election.current_stage + 1 }}:
+                                         </label>
+                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                             <label
+                                                 :class="[
+                                                     'flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 transition-all text-left',
+                                                     nextSelectionMode === 'max'
+                                                         ? 'border-blue-500 bg-white text-blue-950 shadow-xs dark:border-blue-500 dark:bg-slate-900 dark:text-blue-100'
+                                                         : 'border-slate-200 bg-white/70 text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400',
+                                                 ]"
+                                             >
+                                                 <input
+                                                     type="radio"
+                                                     value="max"
+                                                     v-model="nextSelectionMode"
+                                                     class="mt-0.5 h-3.5 w-3.5 text-blue-600 focus:ring-blue-500"
+                                                 />
+                                                 <div class="text-[11px] leading-tight">
+                                                     <span class="font-extrabold block">Maksimal (Fleksibel)</span>
+                                                     <span class="text-[10px] text-slate-500 dark:text-slate-400">Boleh memilih 1 sampai {{ nextMaxVotes }} paslon</span>
+                                                 </div>
+                                             </label>
+                                             <label
+                                                 :class="[
+                                                     'flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 transition-all text-left',
+                                                     nextSelectionMode === 'exact'
+                                                         ? 'border-blue-500 bg-white text-blue-950 shadow-xs dark:border-blue-500 dark:bg-slate-900 dark:text-blue-100'
+                                                         : 'border-slate-200 bg-white/70 text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400',
+                                                 ]"
+                                             >
+                                                 <input
+                                                     type="radio"
+                                                     value="exact"
+                                                     v-model="nextSelectionMode"
+                                                     class="mt-0.5 h-3.5 w-3.5 text-blue-600 focus:ring-blue-500"
+                                                 />
+                                                 <div class="text-[11px] leading-tight">
+                                                     <span class="font-extrabold block">Harus Tepat (Wajib Pas)</span>
+                                                     <span class="text-[10px] text-slate-500 dark:text-slate-400">Wajib mencoblos tepat {{ nextMaxVotes }} paslon</span>
+                                                 </div>
+                                             </label>
                                          </div>
                                      </div>
                                  </div>
@@ -864,6 +915,7 @@ import { router, Link } from '@inertiajs/vue3';
  const nextMaxVotes = ref<number>(
      props.election.stage_schedules?.[nextStageNum.value]?.max_votes ?? 1,
  );
+ const nextSelectionMode = ref<'max' | 'exact'>('max');
 
  const changeStage = (stageNum: number) => {
      router.get(
@@ -885,6 +937,7 @@ import { router, Link } from '@inertiajs/vue3';
              qualifiers_count: qualifiersCount.value,
              selected_candidate_ids: selectedCandidateIds.value,
              max_votes_per_voter: nextMaxVotes.value,
+             vote_selection_mode: nextSelectionMode.value,
              schedule_option: scheduleOption.value,
              start_at: nextStartAt.value,
              end_at: nextEndAt.value,
@@ -920,6 +973,22 @@ const windowPrint = () => {
 const isRefreshing = ref(false);
 const lastUpdatedTime = ref('Baru saja');
 
+const CANDIDATE_GRADIENTS = [
+    { bar: 'from-blue-600 to-indigo-600', vert: 'from-blue-700 to-blue-500' },
+    { bar: 'from-emerald-500 to-teal-600', vert: 'from-emerald-700 to-emerald-500' },
+    { bar: 'from-violet-500 to-purple-600', vert: 'from-violet-700 to-purple-500' },
+    { bar: 'from-amber-500 to-orange-600', vert: 'from-amber-600 to-orange-500' },
+    { bar: 'from-rose-500 to-pink-600', vert: 'from-rose-600 to-pink-500' },
+    { bar: 'from-cyan-500 to-blue-600', vert: 'from-cyan-600 to-blue-600' },
+    { bar: 'from-fuchsia-500 to-purple-600', vert: 'from-fuchsia-600 to-purple-500' },
+    { bar: 'from-teal-500 to-emerald-600', vert: 'from-teal-600 to-emerald-500' },
+];
+
+const getCandidateColor = (index: number, type: 'bar' | 'vert' = 'bar') => {
+    const palette = CANDIDATE_GRADIENTS[index % CANDIDATE_GRADIENTS.length];
+    return palette[type];
+};
+
 const updateTimestamp = () => {
     const now = new Date();
     lastUpdatedTime.value = now.toLocaleTimeString('id-ID', {
@@ -934,7 +1003,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
     updateTimestamp();
 
-    // Polling background update setiap 3 detik secara halus tanpa me-reload browser
+    // Polling background update setiap 4 detik secara halus
     pollTimer = setInterval(() => {
         // Jangan auto-reload jika modal sedang aktif dibuka admin
         if (showAdvanceModal.value || showResetModal.value) {
@@ -944,8 +1013,6 @@ onMounted(() => {
         isRefreshing.value = true;
         router.reload({
             only: ['election', 'results', 'leadingCandidate', 'activeQualifiedCount'],
-            preserveScroll: true,
-            preserveState: true,
             onFinish: () => {
                 isRefreshing.value = false;
                 updateTimestamp();

@@ -67,24 +67,38 @@
             <div
                 class="flex flex-col items-stretch justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:flex-row sm:items-center sm:p-4 dark:border-slate-700 dark:bg-slate-800"
             >
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <Vote
                         class="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400"
                     />
                     <span
                         class="text-xs font-bold text-slate-700 dark:text-slate-300"
                     >
-                        {{
-                            (election.max_votes_per_voter || 1) > 1
-                                ? `Pilih Hingga ${election.max_votes_per_voter} Kandidat (Multi-Choice):`
-                                : 'Pilih Salah Satu Pasangan Kandidat:'
-                        }}
+                        <template v-if="(election.max_votes_per_voter || 1) > 1">
+                            <span v-if="election.vote_selection_mode === 'exact'">
+                                Wajib Memilih Tepat {{ election.max_votes_per_voter }} Kandidat:
+                            </span>
+                            <span v-else>
+                                Pilih Hingga {{ election.max_votes_per_voter }} Kandidat (Maksimal):
+                            </span>
+                        </template>
+                        <template v-else>
+                            Pilih Salah Satu Pasangan Kandidat:
+                        </template>
                     </span>
                     <span
                         v-if="(election.max_votes_per_voter || 1) > 1"
-                        class="rounded bg-purple-100 px-2 py-0.5 text-[10px] font-extrabold text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                        :class="[
+                            'rounded px-2 py-0.5 text-[10px] font-extrabold',
+                            election.vote_selection_mode === 'exact' && selectedCandidates.length < maxVotesAllowed
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
+                        ]"
                     >
                         {{ selectedCandidates.length }} / {{ election.max_votes_per_voter }} Dipilih
+                        <span v-if="election.vote_selection_mode === 'exact' && selectedCandidates.length < maxVotesAllowed" class="ml-1 text-[9px] font-semibold">
+                            (Kurang {{ maxVotesAllowed - selectedCandidates.length }})
+                        </span>
                     </span>
                 </div>
 
@@ -376,21 +390,17 @@
                     <!-- Submit Button -->
                     <button
                         type="button"
-                        :disabled="selectedCandidates.length === 0 || isSubmitting"
+                        :disabled="!canSubmitVote || isSubmitting"
                         @click="showConfirmModal = true"
                         :class="[
                             'flex w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-sm transition-colors sm:w-auto sm:text-sm',
-                            selectedCandidates.length > 0 && !isSubmitting
+                            canSubmitVote && !isSubmitting
                                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                                 : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
                         ]"
                     >
                         <Vote class="h-4 w-4" />
-                        <span>{{
-                            selectedCandidates.length > 0
-                                ? `Kirim ${selectedCandidates.length} Suara Pilihan`
-                                : 'Pilih Kandidat'
-                        }}</span>
+                        <span>{{ submitButtonLabel }}</span>
                     </button>
                 </div>
             </div>
@@ -515,6 +525,7 @@ const props = defineProps<{
         is_multi_stage?: boolean;
         is_simulation?: boolean;
         max_votes_per_voter?: number;
+        vote_selection_mode?: string;
         current_stage?: number;
         total_stages?: number;
         end_at: string;
@@ -533,6 +544,28 @@ const activeVisionModal = ref<any>(null);
 const isSubmitting = ref(false);
 
 const maxVotesAllowed = computed(() => props.election.max_votes_per_voter || 1);
+const isExactMode = computed(() => props.election.vote_selection_mode === 'exact');
+
+const canSubmitVote = computed(() => {
+    if (selectedCandidates.value.length === 0) return false;
+    if (isExactMode.value) {
+        return selectedCandidates.value.length === maxVotesAllowed.value;
+    }
+    return selectedCandidates.value.length <= maxVotesAllowed.value;
+});
+
+const submitButtonLabel = computed(() => {
+    if (selectedCandidates.value.length === 0) {
+        return isExactMode.value
+            ? `Pilih ${maxVotesAllowed.value} Paslon`
+            : 'Pilih Kandidat';
+    }
+    if (isExactMode.value && selectedCandidates.value.length < maxVotesAllowed.value) {
+        const remaining = maxVotesAllowed.value - selectedCandidates.value.length;
+        return `Pilih ${remaining} Paslon Lagi (Wajib ${maxVotesAllowed.value})`;
+    }
+    return `Kirim ${selectedCandidates.value.length} Suara Pilihan`;
+});
 
 const isCandidateSelected = (cand: any) => {
     return selectedCandidates.value.some((c) => c.id === cand.id);

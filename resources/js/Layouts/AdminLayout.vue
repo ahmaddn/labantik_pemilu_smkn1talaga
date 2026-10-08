@@ -264,6 +264,9 @@
                 <slot />
             </main>
         </div>
+
+        <!-- Floating Toast Notification System -->
+        <ToastNotification />
     </div>
 </template>
 
@@ -286,6 +289,7 @@ import {
     BookOpen,
 } from '@lucide/vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import ToastNotification from '@/Components/ToastNotification.vue';
 
 const props = defineProps<{
     title?: string;

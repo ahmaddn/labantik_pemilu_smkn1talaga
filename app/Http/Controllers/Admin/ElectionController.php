@@ -96,6 +96,7 @@ class ElectionController extends Controller
             'simulation_start_at' => ['nullable', 'date'],
             'simulation_end_at' => ['nullable', 'date', 'after:simulation_start_at'],
             'max_votes_per_voter' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'vote_selection_mode' => ['nullable', 'in:max,exact'],
             'total_stages' => ['nullable', 'integer', 'min:1', 'max:5'],
             'stage_schedules' => ['nullable', 'array'],
         ]);
@@ -104,6 +105,7 @@ class ElectionController extends Controller
         $validated['is_multi_stage'] = $request->boolean('is_multi_stage');
         $validated['is_simulation'] = $request->boolean('is_simulation');
         $validated['max_votes_per_voter'] = (int) ($validated['max_votes_per_voter'] ?? 1);
+        $validated['vote_selection_mode'] = $validated['vote_selection_mode'] ?? 'max';
         $validated['total_stages'] = $validated['is_multi_stage'] ? ($validated['total_stages'] ?? 2) : 1;
         $validated['current_stage'] = 1;
 
@@ -111,6 +113,9 @@ class ElectionController extends Controller
             $schedules = $validated['stage_schedules'];
             if (isset($schedules['1']['max_votes'])) {
                 $validated['max_votes_per_voter'] = (int) $schedules['1']['max_votes'];
+            }
+            if (isset($schedules['1']['selection_mode'])) {
+                $validated['vote_selection_mode'] = $schedules['1']['selection_mode'];
             }
         }
 
@@ -147,6 +152,7 @@ class ElectionController extends Controller
                 'simulation_start_at' => $election->simulation_start_at ? $election->simulation_start_at->format('Y-m-d\TH:i') : '',
                 'simulation_end_at' => $election->simulation_end_at ? $election->simulation_end_at->format('Y-m-d\TH:i') : '',
                 'max_votes_per_voter' => $election->max_votes_per_voter ?? 1,
+                'vote_selection_mode' => $election->vote_selection_mode ?? 'max',
                 'current_stage' => $election->current_stage,
                 'total_stages' => $election->total_stages,
                 'stage_schedules' => $election->stage_schedules ?? [],
@@ -174,6 +180,7 @@ class ElectionController extends Controller
             'simulation_start_at' => ['nullable', 'date'],
             'simulation_end_at' => ['nullable', 'date', 'after:simulation_start_at'],
             'max_votes_per_voter' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'vote_selection_mode' => ['nullable', 'in:max,exact'],
             'total_stages' => ['nullable', 'integer', 'min:1', 'max:5'],
             'stage_schedules' => ['nullable', 'array'],
         ]);
@@ -181,6 +188,7 @@ class ElectionController extends Controller
         $validated['is_multi_stage'] = $request->boolean('is_multi_stage');
         $validated['is_simulation'] = $request->boolean('is_simulation');
         $validated['max_votes_per_voter'] = (int) ($validated['max_votes_per_voter'] ?? 1);
+        $validated['vote_selection_mode'] = $validated['vote_selection_mode'] ?? 'max';
         $validated['total_stages'] = $validated['is_multi_stage'] ? ($validated['total_stages'] ?? 2) : 1;
 
         if ($validated['is_multi_stage'] && ! empty($validated['stage_schedules'])) {
@@ -188,6 +196,9 @@ class ElectionController extends Controller
             $currentStageKey = (string) ($election->current_stage ?: 1);
             if (isset($schedules[$currentStageKey]['max_votes'])) {
                 $validated['max_votes_per_voter'] = (int) $schedules[$currentStageKey]['max_votes'];
+            }
+            if (isset($schedules[$currentStageKey]['selection_mode'])) {
+                $validated['vote_selection_mode'] = $schedules[$currentStageKey]['selection_mode'];
             }
         }
 

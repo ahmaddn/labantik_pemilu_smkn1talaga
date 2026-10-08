@@ -11,6 +11,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -344,7 +345,7 @@ class ResultController extends Controller
 
         $candidateClassMap = [];
         if (! empty($candidateNames)) {
-            $candClassRows = \Illuminate\Support\Facades\DB::table('ref_students')
+            $candClassRows = DB::table('ref_students')
                 ->join('ref_student_academic_years', 'ref_students.id', '=', 'ref_student_academic_years.student_id')
                 ->join('ref_classes', 'ref_student_academic_years.class_id', '=', 'ref_classes.id')
                 ->whereIn('ref_students.full_name', $candidateNames)

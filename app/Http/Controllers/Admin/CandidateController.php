@@ -242,29 +242,58 @@ class CandidateController extends Controller
     }
 
     /**
-     * Download CSV template for candidate import.
+     * Download Excel (.xls) table template for candidate import.
      */
     public function downloadTemplate(string $electionId): StreamedResponse
     {
         $election = ElectionEvote::findOrFail($electionId);
         $cleanTitle = Str::slug($election->title, '_');
-        $fileName = "template_import_kandidat_{$cleanTitle}.csv";
+        $fileName = "template_import_kandidat_{$cleanTitle}.xls";
 
         return response()->streamDownload(function () {
-            $handle = fopen('php://output', 'w');
-            // Write UTF-8 BOM so Excel opens it with proper encoding
-            fwrite($handle, "\xEF\xBB\xBF");
+            $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Template Kandidat</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>
+  th { background-color: #1E3A8A; color: #FFFFFF; font-weight: bold; font-family: Arial, sans-serif; font-size: 11pt; border: 1px solid #0F172A; padding: 10px; text-align: center; }
+  td { font-family: Arial, sans-serif; font-size: 10pt; border: 1px solid #CBD5E1; padding: 8px; vertical-align: top; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+</style>
+</head>
+<body>
+<table border="1" style="border-collapse: collapse;">
+  <thead>
+    <tr>
+      <th style="width: 100px;">Nomor Urut</th>
+      <th style="width: 250px;">Nama Ketua</th>
+      <th style="width: 250px;">Nama Wakil</th>
+      <th style="width: 450px;">Visi &amp; Misi</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="center bold">1</td>
+      <td>Ahmad Fauzi</td>
+      <td>Siti Rahmawati</td>
+      <td>Visi: Mewujudkan organisasi yang inovatif, disiplin, dan berkarakter. Misi: 1. Mengembangkan potensi siswa, 2. Mempererat kolaborasi warga sekolah.</td>
+    </tr>
+    <tr>
+      <td class="center bold">2</td>
+      <td>Budi Santoso</td>
+      <td>Dewi Lestari</td>
+      <td>Visi: Sekolah berprestasi dan berwawasan global. Misi: 1. Peningkatan kompetensi bakat minat, 2. Kegiatan ekstrakurikuler yang aktif dan produktif.</td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>';
 
-            // Header row
-            fputcsv($handle, ['Nomor Urut', 'Nama Ketua', 'Nama Wakil', 'Visi & Misi']);
-
-            // Example rows
-            fputcsv($handle, [1, 'Ahmad Fauzi', 'Siti Rahmawati', 'Visi: Mewujudkan sekolah inovatif. Misi: 1. Kolaborasi siswa, 2. Fasilitas terbuka.']);
-            fputcsv($handle, [2, 'Budi Santoso', 'Dewi Lestari', 'Visi: Disiplin dan berprestasi. Misi: Mengembangkan bakat minat siswa.']);
-
-            fclose($handle);
+            echo $html;
         }, $fileName, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Pragma' => 'no-cache',
             'Expires' => '0',
@@ -272,42 +301,68 @@ class CandidateController extends Controller
     }
 
     /**
-     * Import candidate list from CSV / Excel file.
+     * Import candidate list from CSV / Excel (.xls, .xlsx, .csv) file.
      */
     public function import(Request $request, string $electionId): RedirectResponse
     {
         $election = ElectionEvote::findOrFail($electionId);
 
         $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120'], // 5MB max
+            'file' => ['required', 'file', 'max:10240'], // 10MB max
         ]);
 
         $uploadedFile = $request->file('file');
         $path = $uploadedFile->getRealPath();
+        $content = file_get_contents($path);
 
         $rows = [];
-        if (($handle = fopen($path, 'r')) !== false) {
-            // Strip possible UTF-8 BOM
-            $bom = fread($handle, 3);
-            if ($bom !== "\xEF\xBB\xBF") {
-                rewind($handle);
-            }
 
-            while (($data = fgetcsv($handle, 4096, ',')) !== false) {
-                // If single column detected, try semicolon delimiter
-                if (count($data) === 1 && str_contains($data[0], ';')) {
-                    $data = str_getcsv($data[0], ';');
+        // 1. Cek apakah file berupa HTML table (format Excel .xls template)
+        if (str_contains($content, '<table') || str_contains($content, '<tr')) {
+            $dom = new \DOMDocument;
+            libxml_use_internal_errors(true);
+            $dom->loadHTML('<?xml encoding="UTF-8">'.$content);
+            libxml_clear_errors();
+
+            foreach ($dom->getElementsByTagName('tr') as $tr) {
+                $row = [];
+                foreach ($tr->getElementsByTagName('th') as $th) {
+                    $row[] = trim($th->textContent);
                 }
-                $rows[] = $data;
+                foreach ($tr->getElementsByTagName('td') as $td) {
+                    $row[] = trim($td->textContent);
+                }
+                if (! empty($row)) {
+                    $rows[] = $row;
+                }
             }
-            fclose($handle);
+        } else {
+            // 2. Parse sebagai CSV
+            if (($handle = fopen($path, 'r')) !== false) {
+                // Strip possible UTF-8 BOM
+                $bom = fread($handle, 3);
+                if ($bom !== "\xEF\xBB\xBF") {
+                    rewind($handle);
+                }
+
+                while (($data = fgetcsv($handle, 4096, ',')) !== false) {
+                    // Cek jika pemisah menggunakan titik koma (;) atau tab (\t)
+                    if (count($data) === 1 && str_contains($data[0], ';')) {
+                        $data = str_getcsv($data[0], ';');
+                    } elseif (count($data) === 1 && str_contains($data[0], "\t")) {
+                        $data = str_getcsv($data[0], "\t");
+                    }
+                    $rows[] = $data;
+                }
+                fclose($handle);
+            }
         }
 
         if (empty($rows)) {
             return back()->with('error', 'File yang diunggah kosong atau format data tidak dapat dibaca.');
         }
 
-        // Header detection (skip first row if it contains headers like 'nomor', 'ketua', etc.)
+        // Deteksi baris header
         $startIndex = 0;
         $firstRowText = strtolower(implode(' ', $rows[0]));
         if (str_contains($firstRowText, 'nomor') || str_contains($firstRowText, 'ketua') || str_contains($firstRowText, 'nama')) {
@@ -319,7 +374,6 @@ class CandidateController extends Controller
 
         for ($i = $startIndex; $i < count($rows); $i++) {
             $row = $rows[$i];
-            // Filter out empty rows
             $cleanRow = array_filter(array_map('trim', $row));
             if (empty($cleanRow)) {
                 continue;

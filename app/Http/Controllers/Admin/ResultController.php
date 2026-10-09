@@ -444,9 +444,23 @@ class ResultController extends Controller
                 'votes_count' => $count,
                 'percentage' => $percentage,
             ];
-        });
+        })->sort(function ($a, $b) {
+            // 1. Suara terbanyak dulu
+            if ($b['votes_count'] !== $a['votes_count']) {
+                return $b['votes_count'] <=> $a['votes_count'];
+            }
+            // 2. Yang memenuhi syarat didahulukan
+            $qualA = ($a['is_qualified'] !== false) ? 1 : 0;
+            $qualB = ($b['is_qualified'] !== false) ? 1 : 0;
+            if ($qualB !== $qualA) {
+                return $qualB <=> $qualA;
+            }
 
-        $leadingCandidate = $results->sortByDesc('votes_count')->first();
+            // 3. Nomor urut paslon terkecil
+            return (int) $a['candidate_number'] <=> (int) $b['candidate_number'];
+        })->values();
+
+        $leadingCandidate = $results->first();
 
         // Hari dan tanggal dalam Bahasa Indonesia
         $daysIndo = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];

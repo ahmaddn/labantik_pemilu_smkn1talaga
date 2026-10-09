@@ -244,16 +244,20 @@
     <table class="table-result">
         <thead>
             <tr>
-                <th style="width: 7%;">No.</th>
-                <th style="width: 48%; text-align: left;">Nama Calon Paslon / Rombel</th>
-                <th style="width: 17%;">Jumlah Suara</th>
-                <th style="width: 14%;">Persentase</th>
+                <th style="width: 7%;">Rank</th>
+                <th style="width: 8%;">No. Urut</th>
+                <th style="width: 44%; text-align: left;">Nama Calon Paslon / Rombel</th>
+                <th style="width: 15%;">Jumlah Suara</th>
+                <th style="width: 12%;">Persentase</th>
                 <th style="width: 14%;">Keterangan</th>
             </tr>
         </thead>
         <tbody>
             @forelse($results as $index => $cand)
             <tr>
+                <td class="text-center font-bold" style="background-color: {{ $index < $effectiveMaxVotes ? '#f0fdf4' : '#fff' }};">
+                    #{{ $index + 1 }}
+                </td>
                 <td class="text-center font-bold">{{ $cand['candidate_number'] }}</td>
                 <td>
                     <div class="font-bold">{{ $cand['chairman_name'] }}</div>
@@ -291,7 +295,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="5" class="text-center" style="color: #64748b; padding: 16px;">
+                <td colspan="6" class="text-center" style="color: #64748b; padding: 16px;">
                     Belum ada data calon atau suara yang masuk.
                 </td>
             </tr>

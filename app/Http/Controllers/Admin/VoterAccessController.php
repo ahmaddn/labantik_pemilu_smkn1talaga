@@ -53,6 +53,13 @@ class VoterAccessController extends Controller
             });
         }
 
+        $statusFilter = trim((string) $request->input('status', '')); // '', 'voted', 'not_voted'
+        if ($statusFilter === 'voted') {
+            $query->where('voter_accesses_evote.is_voted', true);
+        } elseif ($statusFilter === 'not_voted') {
+            $query->where('voter_accesses_evote.is_voted', false);
+        }
+
         $sortBy = $request->input('sort_by', 'name'); // 'name', 'class'
         $classFilter = trim((string) $request->input('class', ''));
 
@@ -182,6 +189,7 @@ class VoterAccessController extends Controller
                 'search' => $search,
                 'sort_by' => $sortBy,
                 'class' => $classFilter,
+                'status' => $statusFilter,
                 'stage' => $selectedStage,
             ],
             'availableClasses' => $availableClasses,

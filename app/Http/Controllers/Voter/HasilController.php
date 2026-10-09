@@ -59,7 +59,7 @@ class HasilController extends Controller
         }
 
         $results = $election->candidates->map(function ($candidate) use ($totalVotes, $candidateClassMap) {
-            $count = $candidate->votes_count;
+            $count = (int) $candidate->votes_count;
             $percentage = $totalVotes > 0 ? round(($count / $totalVotes) * 100, 1) : 0;
 
             return [
@@ -73,7 +73,15 @@ class HasilController extends Controller
                 'votes_count' => $count,
                 'percentage' => $percentage,
             ];
-        });
+        })
+            ->sort(function ($a, $b) {
+                if ($b['votes_count'] !== $a['votes_count']) {
+                    return $b['votes_count'] <=> $a['votes_count'];
+                }
+
+                return $a['candidate_number'] <=> $b['candidate_number'];
+            })
+            ->values();
 
         return Inertia::render('Voter/Results', [
             'election' => [

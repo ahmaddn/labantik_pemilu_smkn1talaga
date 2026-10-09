@@ -169,16 +169,17 @@
 
                     <!-- Filter & Search Controls -->
                     <div class="flex flex-wrap items-center gap-2.5">
-                        <!-- Urutkan Berdasarkan -->
+                        <!-- Filter Status Voting -->
                         <div class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                            <span class="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Urutkan:</span>
+                            <span class="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Status:</span>
                             <select
-                                v-model="sortBy"
-                                @change="handleSortChange"
+                                v-model="selectedStatus"
+                                @change="handleStatusFilterChange"
                                 class="rounded-xl border border-slate-300 bg-slate-50 py-1.5 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white cursor-pointer"
                             >
-                                <option value="name">Nama Pemilih (A-Z)</option>
-                                <option value="class">Kelas / Tingkat (10 - 12)</option>
+                                <option value="">Semua Status</option>
+                                <option value="voted">Sudah Memilih</option>
+                                <option value="not_voted">Belum Memilih</option>
                             </select>
                         </div>
 
@@ -201,6 +202,19 @@
                                 >
                                     {{ typeof cls === 'object' ? cls.label : cls }}
                                 </option>
+                            </select>
+                        </div>
+
+                        <!-- Urutkan Berdasarkan -->
+                        <div class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <span class="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Urutkan:</span>
+                            <select
+                                v-model="sortBy"
+                                @change="handleSortChange"
+                                class="rounded-xl border border-slate-300 bg-slate-50 py-1.5 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white cursor-pointer"
+                            >
+                                <option value="name">Nama Pemilih (A-Z)</option>
+                                <option value="class">Kelas / Tingkat (10 - 12)</option>
                             </select>
                         </div>
 
@@ -585,6 +599,7 @@ const props = defineProps<{
         search?: string;
         sort_by?: string;
         class?: string;
+        status?: string;
         stage?: number;
     };
     availableClasses?: string[];
@@ -673,6 +688,7 @@ const submitSelectedUsers = () => {
 const searchQuery = ref(props.filters?.search || '');
 const sortBy = ref(props.filters?.sort_by || 'name');
 const selectedClass = ref(props.filters?.class || '');
+const selectedStatus = ref(props.filters?.status || '');
 let searchTimer: any = null;
 
 const changeStage = (stageNum: number) => {
@@ -687,6 +703,7 @@ const applyFilters = () => {
             search: searchQuery.value,
             sort_by: sortBy.value,
             class: selectedClass.value,
+            status: selectedStatus.value,
             stage: currentSelectedStage.value,
         },
         { preserveState: true, replace: true, preserveScroll: true }
@@ -705,6 +722,10 @@ const handleSortChange = () => {
 };
 
 const handleClassFilterChange = () => {
+    applyFilters();
+};
+
+const handleStatusFilterChange = () => {
     applyFilters();
 };
 

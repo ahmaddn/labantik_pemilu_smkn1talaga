@@ -274,33 +274,31 @@ class VoterAccessController extends Controller
             $userIds = array_merge($userIds, $studentUserIds);
         }
 
-        // 2. Fetch eligible teacher user_ids (MURNI hanya role 'Guru' aktif, dan BUKAN tendik, kepsek, kurikulum, kesiswaan, atau siswa)
+        // 2. Fetch eligible teacher user_ids (Semua yang memiliki role 'Guru' atau terdaftar di core_employees dan aktif)
         if (in_array($targetVoter, ['all', 'teacher'], true)) {
-            $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
-
-            $excludedUserIds = DB::table('assoc_user_roles')
-                ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                ->whereIn('core_roles.name', $excludedRoleNames)
-                ->pluck('assoc_user_roles.user_id')
-                ->unique()
-                ->toArray();
-
             $studentIdsToExclude = DB::table('ref_students')
                 ->whereNotNull('user_id')
                 ->pluck('user_id')
                 ->toArray();
 
-            $allExcludes = array_unique(array_merge($excludedUserIds, $studentIdsToExclude));
-
-            $teacherUserIds = DB::table('assoc_user_roles')
+            $teacherUserIdsFromRoles = DB::table('assoc_user_roles')
                 ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
                 ->join('core_users', 'assoc_user_roles.user_id', '=', 'core_users.id')
-                ->where('core_roles.name', 'Guru')
+                ->where('core_roles.name', 'like', '%Guru%')
                 ->where('core_users.is_active', true)
-                ->whereNotIn('assoc_user_roles.user_id', $allExcludes)
-                ->distinct()
+                ->whereNotIn('assoc_user_roles.user_id', $studentIdsToExclude)
                 ->pluck('assoc_user_roles.user_id')
                 ->toArray();
+
+            $teacherUserIdsFromEmployees = DB::table('core_employees')
+                ->join('core_users', 'core_employees.user_id', '=', 'core_users.id')
+                ->whereNotNull('core_employees.user_id')
+                ->where('core_users.is_active', true)
+                ->whereNotIn('core_employees.user_id', $studentIdsToExclude)
+                ->pluck('core_employees.user_id')
+                ->toArray();
+
+            $teacherUserIds = array_unique(array_merge($teacherUserIdsFromRoles, $teacherUserIdsFromEmployees));
 
             $userIds = array_merge($userIds, $teacherUserIds);
         }
@@ -425,26 +423,27 @@ class VoterAccessController extends Controller
             $studentUserIds = $studentQuery->pluck('ref_students.user_id')->unique()->toArray();
             $usersQuery->whereIn('core_users.id', $studentUserIds);
         } elseif ($targetVoter === 'teacher') {
-            // Hanya guru murni (memiliki role Guru dan bukan siswa/tendik/admin lainnya)
-            $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
-
-            $excludedUserIds = DB::table('assoc_user_roles')
-                ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                ->whereIn('core_roles.name', $excludedRoleNames)
-                ->pluck('assoc_user_roles.user_id')
-                ->unique()
-                ->toArray();
-
+            // Semua pengguna yang memiliki role Guru atau terdaftar di core_employees (bukan siswa)
             $studentUserIds = DB::table('ref_students')->whereNotNull('user_id')->pluck('user_id')->toArray();
-            $allTeacherExcludes = array_unique(array_merge($excludedUserIds, $studentUserIds));
 
-            $teacherUserIds = DB::table('assoc_user_roles')
+            $teacherUserIdsFromRoles = DB::table('assoc_user_roles')
                 ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                ->where('core_roles.name', 'Guru')
-                ->whereNotIn('assoc_user_roles.user_id', $allTeacherExcludes)
+                ->join('core_users', 'assoc_user_roles.user_id', '=', 'core_users.id')
+                ->where('core_roles.name', 'like', '%Guru%')
+                ->where('core_users.is_active', true)
+                ->whereNotIn('assoc_user_roles.user_id', $studentUserIds)
                 ->pluck('assoc_user_roles.user_id')
-                ->unique()
                 ->toArray();
+
+            $teacherUserIdsFromEmployees = DB::table('core_employees')
+                ->join('core_users', 'core_employees.user_id', '=', 'core_users.id')
+                ->whereNotNull('core_employees.user_id')
+                ->where('core_users.is_active', true)
+                ->whereNotIn('core_employees.user_id', $studentUserIds)
+                ->pluck('core_employees.user_id')
+                ->toArray();
+
+            $teacherUserIds = array_unique(array_merge($teacherUserIdsFromRoles, $teacherUserIdsFromEmployees));
 
             $usersQuery->whereIn('core_users.id', $teacherUserIds);
         } else {
@@ -472,23 +471,26 @@ class VoterAccessController extends Controller
             $teacherUserIds = [];
             // Jika memfilter kelas, hanya siswa yang cocok
             if (empty($classFilter)) {
-                $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
-                $excludedUserIds = DB::table('assoc_user_roles')
+                $allStudentUserIds = DB::table('ref_students')->whereNotNull('user_id')->pluck('user_id')->toArray();
+
+                $teacherUserIdsFromRoles = DB::table('assoc_user_roles')
                     ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                    ->whereIn('core_roles.name', $excludedRoleNames)
+                    ->join('core_users', 'assoc_user_roles.user_id', '=', 'core_users.id')
+                    ->where('core_roles.name', 'like', '%Guru%')
+                    ->where('core_users.is_active', true)
+                    ->whereNotIn('assoc_user_roles.user_id', $allStudentUserIds)
                     ->pluck('assoc_user_roles.user_id')
-                    ->unique()
                     ->toArray();
 
-                $allStudentUserIds = DB::table('ref_students')->whereNotNull('user_id')->pluck('user_id')->toArray();
-                $allTeacherExcludes = array_unique(array_merge($excludedUserIds, $allStudentUserIds));
-                $teacherUserIds = DB::table('assoc_user_roles')
-                    ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-                    ->where('core_roles.name', 'Guru')
-                    ->whereNotIn('assoc_user_roles.user_id', $allTeacherExcludes)
-                    ->pluck('assoc_user_roles.user_id')
-                    ->unique()
+                $teacherUserIdsFromEmployees = DB::table('core_employees')
+                    ->join('core_users', 'core_employees.user_id', '=', 'core_users.id')
+                    ->whereNotNull('core_employees.user_id')
+                    ->where('core_users.is_active', true)
+                    ->whereNotIn('core_employees.user_id', $allStudentUserIds)
+                    ->pluck('core_employees.user_id')
                     ->toArray();
+
+                $teacherUserIds = array_unique(array_merge($teacherUserIdsFromRoles, $teacherUserIdsFromEmployees));
             }
 
             $allowedUserIds = array_unique(array_merge($studentUserIds, $teacherUserIds));

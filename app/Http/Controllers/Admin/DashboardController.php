@@ -23,31 +23,30 @@ class DashboardController extends Controller
             ->whereNull('mutation_date')
             ->count();
 
-        // 2. Hitung Guru (HANYA role 'Guru' yang aktif, tanpa tendik, kepsek, kurikulum, kesiswaan, superadmin, atau siswa)
-        $excludedRoleNames = ['Super Admin', 'Kesiswaan', 'Tenaga Kependidikan', 'Kepala Sekolah', 'Kurikulum', 'Siswa'];
-
-        $excludedUserIds = DB::table('assoc_user_roles')
-            ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
-            ->whereIn('core_roles.name', $excludedRoleNames)
-            ->pluck('assoc_user_roles.user_id')
-            ->unique()
-            ->toArray();
-
+        // 2. Hitung Guru (Semua yang memiliki role 'Guru' atau terdaftar di core_employees yang aktif, dan bukan siswa)
         $studentIdsToExclude = DB::table('ref_students')
             ->whereNotNull('user_id')
             ->pluck('user_id')
             ->toArray();
 
-        $allExcludes = array_unique(array_merge($excludedUserIds, $studentIdsToExclude));
-
-        $totalTeachers = DB::table('assoc_user_roles')
+        $teacherUserIdsFromRoles = DB::table('assoc_user_roles')
             ->join('core_roles', 'assoc_user_roles.role_id', '=', 'core_roles.id')
             ->join('core_users', 'assoc_user_roles.user_id', '=', 'core_users.id')
-            ->where('core_roles.name', 'Guru')
+            ->where('core_roles.name', 'like', '%Guru%')
             ->where('core_users.is_active', true)
-            ->whereNotIn('assoc_user_roles.user_id', $allExcludes)
-            ->distinct()
-            ->count('assoc_user_roles.user_id');
+            ->whereNotIn('assoc_user_roles.user_id', $studentIdsToExclude)
+            ->pluck('assoc_user_roles.user_id')
+            ->toArray();
+
+        $teacherUserIdsFromEmployees = DB::table('core_employees')
+            ->join('core_users', 'core_employees.user_id', '=', 'core_users.id')
+            ->whereNotNull('core_employees.user_id')
+            ->where('core_users.is_active', true)
+            ->whereNotIn('core_employees.user_id', $studentIdsToExclude)
+            ->pluck('core_employees.user_id')
+            ->toArray();
+
+        $totalTeachers = count(array_unique(array_merge($teacherUserIdsFromRoles, $teacherUserIdsFromEmployees)));
 
         $totalVotesCast = VoteEvote::count();
 

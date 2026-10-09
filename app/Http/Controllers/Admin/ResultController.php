@@ -28,7 +28,7 @@ class ResultController extends Controller
             $selectedStage = 1;
         }
 
-        // Total votes in the selected stage
+        // Total votes cast in the selected stage
         $totalVotes = VoteEvote::where('election_id', $electionId)
             ->where('stage_number', $selectedStage)
             ->count();
@@ -41,7 +41,14 @@ class ResultController extends Controller
             $totalVoters = VoterAccessEvote::where('election_id', $electionId)->count();
         }
 
-        $turnoutPercentage = $totalVoters > 0 ? round(($totalVotes / $totalVoters) * 100, 1) : 0;
+        // Total distinct voters who have cast their ballot in this stage
+        $votedCount = VoterAccessEvote::where('election_id', $electionId)
+            ->where('stage_number', $selectedStage)
+            ->where('is_voted', true)
+            ->count();
+
+        // Partisipasi pemilih = (Jumlah pemilih yang hadir/mencoblos / Total hak pilih) * 100%
+        $turnoutPercentage = $totalVoters > 0 ? round(($votedCount / $totalVoters) * 100, 1) : 0;
 
         // Group votes per candidate for selected stage
         $votesMap = VoteEvote::where('election_id', $electionId)
@@ -127,6 +134,7 @@ class ResultController extends Controller
                 'status' => $election->status,
                 'total_votes' => $totalVotes,
                 'total_voters' => $totalVoters,
+                'total_voted_users' => $votedCount,
                 'turnout_percentage' => $turnoutPercentage,
             ],
             'selectedStage' => $selectedStage,
@@ -308,6 +316,44 @@ class ResultController extends Controller
     }
 
     /**
+     * Reset all votes and voter participation back to 0 for this election.
+     */
+    public function resetVotes(string $electionId): RedirectResponse
+    {
+        $election = ElectionEvote::findOrFail($electionId);
+
+        DB::transaction(function () use ($electionId, $election) {
+            // 1. Hapus semua surat suara sah untuk pemilihan ini
+            VoteEvote::where('election_id', $electionId)->delete();
+
+            // 2. Jika multi-tahap, hapus hak akses tahap > 1 dan kembalikan ke tahap 1
+            if ($election->is_multi_stage) {
+                VoterAccessEvote::where('election_id', $electionId)
+                    ->where('stage_number', '>', 1)
+                    ->delete();
+
+                $election->current_stage = 1;
+                $election->save();
+
+                // Pulihkan kualifikasi kandidat
+                CandidateEvote::where('election_id', $electionId)->update([
+                    'is_qualified' => true,
+                    'eliminated_at_stage' => null,
+                ]);
+            }
+
+            // 3. Reset status memilih seluruh pemilih yang terdaftar kembali ke belum memilih (0)
+            VoterAccessEvote::where('election_id', $electionId)->update([
+                'is_voted' => false,
+                'voted_at' => null,
+            ]);
+        });
+
+        return redirect("/admin/pemilihan/{$electionId}/hasil?stage=1")
+            ->with('success', 'Seluruh data perolehan suara berhasil di-reset menjadi 0 dan status hak pilih pemilih telah dipulihkan!');
+    }
+
+    /**
      * Download official PDF recap of election results.
      */
     public function downloadPdf(string $electionId, Request $request)
@@ -330,7 +376,18 @@ class ResultController extends Controller
             $totalVoters = VoterAccessEvote::where('election_id', $electionId)->count();
         }
 
-        $turnoutPercentage = $totalVoters > 0 ? round(($totalVotes / $totalVoters) * 100, 1) : 0;
+        // Total distinct voters who have cast their ballot in this stage
+        $totalVotedUsers = VoterAccessEvote::where('election_id', $electionId)
+            ->where('stage_number', $selectedStage)
+            ->where('is_voted', true)
+            ->count();
+
+        $turnoutPercentage = $totalVoters > 0 ? round(($totalVotedUsers / $totalVoters) * 100, 1) : 0;
+
+        $maxVotes = $election->max_votes_per_voter ?? 1;
+        if ($election->is_multi_stage && ! empty($election->stage_schedules[$selectedStage]['max_votes'])) {
+            $maxVotes = (int) $election->stage_schedules[$selectedStage]['max_votes'];
+        }
 
         $votesMap = VoteEvote::where('election_id', $electionId)
             ->where('stage_number', $selectedStage)
@@ -405,6 +462,8 @@ class ResultController extends Controller
             'selectedStage' => $selectedStage,
             'totalVotes' => $totalVotes,
             'totalVoters' => $totalVoters,
+            'totalVotedUsers' => $totalVotedUsers,
+            'maxVotes' => $maxVotes,
             'turnoutPercentage' => $turnoutPercentage,
             'results' => $results,
             'leadingCandidate' => $leadingCandidate && $leadingCandidate['votes_count'] > 0 ? $leadingCandidate : null,

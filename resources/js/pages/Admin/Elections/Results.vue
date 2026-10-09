@@ -100,6 +100,17 @@
                         <Download class="h-4 w-4" />
                         <span>Download PDF Rekap</span>
                     </a>
+
+                    <!-- Reset All Votes Button -->
+                    <button
+                        type="button"
+                        @click="confirmResetVotes"
+                        class="flex cursor-pointer items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-600 shadow-sm transition-colors hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                        title="Reset seluruh suara dan status pemilih kembali ke 0"
+                    >
+                        <RotateCcw class="h-4 w-4" />
+                        <span>Reset Suara</span>
+                    </button>
                 </div>
             </div>
 
@@ -170,12 +181,21 @@
                     <div class="space-y-1">
                         <span
                             class="text-xs font-semibold text-slate-500 dark:text-slate-400"
-                            >Total Suara (Tahap {{ selectedStage }})</span
+                            >Total Suara Masuk (Tahap {{ selectedStage }})</span
                         >
+                        <div class="flex items-baseline gap-2">
+                            <span
+                                class="text-2xl font-black text-blue-600 dark:text-blue-400"
+                                >{{ election.total_votes }}</span
+                            >
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Suara</span>
+                        </div>
                         <span
-                            class="block text-2xl font-black text-blue-600 dark:text-blue-400"
-                            >{{ election.total_votes }}</span
+                            v-if="effectiveMaxVotes > 1"
+                            class="block text-[11px] font-medium text-slate-400 dark:text-slate-500"
                         >
+                            Maks. {{ effectiveMaxVotes }} suara per pemilih
+                        </span>
                     </div>
                     <div
                         class="rounded-xl bg-blue-50 p-3 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
@@ -197,6 +217,12 @@
                             class="block text-2xl font-black text-slate-900 dark:text-white"
                             >{{ election.total_voters }}</span
                         >
+                        <span
+                            v-if="election.total_voted_users !== undefined"
+                            class="block text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                        >
+                            {{ election.total_voted_users }} telah mencoblos
+                        </span>
                     </div>
                     <div
                         class="rounded-xl bg-slate-100 p-3 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
@@ -218,6 +244,9 @@
                             class="block text-2xl font-black text-emerald-600 dark:text-emerald-400"
                             >{{ election.turnout_percentage }}%</span
                         >
+                        <span class="block text-[11px] font-medium text-emerald-600/80 dark:text-emerald-400/80">
+                            {{ election.total_voted_users ?? 0 }} dari {{ election.total_voters }} pemilih
+                        </span>
                     </div>
                     <div
                         class="rounded-xl bg-emerald-50 p-3 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
@@ -226,23 +255,30 @@
                     </div>
                 </div>
 
-                <!-- Leading Candidate -->
+                <!-- Leading Candidate / Top Candidates -->
                 <div
                     class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
                 >
                     <div class="min-w-0 space-y-1">
                         <span
                             class="text-xs font-semibold text-slate-500 dark:text-slate-400"
-                            >Paslon Memimpin (Tahap {{ selectedStage }})</span
                         >
+                            {{ effectiveMaxVotes > 1 ? `Top ${effectiveMaxVotes} Teratas (Tahap ${selectedStage})` : `Paslon Memimpin (Tahap ${selectedStage})` }}
+                        </span>
                         <span
                             class="block truncate text-base font-black text-slate-900 dark:text-white"
                         >
                             {{
-                                leadingCandidate
-                                    ? `Paslon ${leadingCandidate.candidate_number}`
-                                    : '-'
+                                leadingCandidates.length > 0
+                                    ? leadingCandidates.map((c) => `No.${c.candidate_number}`).join(', ')
+                                    : (leadingCandidate ? `Paslon ${leadingCandidate.candidate_number}` : '-')
                             }}
+                        </span>
+                        <span
+                            v-if="effectiveMaxVotes > 1"
+                            class="block text-[11px] font-medium text-amber-600 dark:text-amber-400"
+                        >
+                            {{ leadingCandidates.length }} dari kuota {{ effectiveMaxVotes }} posisi
                         </span>
                     </div>
                     <div
@@ -526,27 +562,30 @@
                                     </span>
                                     <span
                                         v-else-if="
-                                            index === 0 &&
                                             candidate.votes_count > 0 &&
+                                            index < effectiveMaxVotes &&
                                             (!election.is_multi_stage || election.current_stage >= election.total_stages)
                                         "
                                         class="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1 text-[11px] font-extrabold text-amber-900 uppercase dark:bg-amber-950/80 dark:text-amber-300"
                                     >
                                         <Trophy class="h-3.5 w-3.5 text-amber-600" />
-                                        <span>Juara 1 (Pemenang)</span>
+                                        <span>Juara {{ index + 1 }} {{ effectiveMaxVotes === 1 ? '(Pemenang)' : '(Terpilih)' }}</span>
                                     </span>
                                     <span
-                                        v-else-if="index === 0 && candidate.votes_count > 0"
-                                        class="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1 text-[11px] font-extrabold text-amber-900 uppercase dark:bg-amber-950/80 dark:text-amber-300"
+                                        v-else-if="
+                                            candidate.votes_count > 0 &&
+                                            index < effectiveMaxVotes
+                                        "
+                                        class="inline-flex items-center gap-1.5 rounded-lg bg-blue-100 px-3 py-1 text-[11px] font-extrabold text-blue-900 uppercase dark:bg-blue-950/80 dark:text-blue-300"
                                     >
-                                        <Trophy class="h-3.5 w-3.5 text-amber-600" />
-                                        <span>Lolos (Peringkat 1)</span>
+                                        <Trophy class="h-3.5 w-3.5 text-blue-600" />
+                                        <span>Lolos (Peringkat {{ index + 1 }})</span>
                                     </span>
                                     <span
                                         v-else
-                                        class="inline-flex items-center rounded-lg bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800 uppercase dark:bg-emerald-950/70 dark:text-emerald-300"
+                                        class="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700 uppercase dark:bg-slate-800 dark:text-slate-300"
                                     >
-                                        Lolos (Peringkat {{ index + 1 }})
+                                        Peringkat {{ index + 1 }}
                                     </span>
                                 </td>
                             </tr>
@@ -856,6 +895,18 @@
                  @confirm="submitResetStages"
                  @cancel="showResetModal = false"
              />
+
+             <!-- Reset All Votes Modal Confirmation -->
+             <ConfirmModal
+                 :show="showResetVotesModal"
+                 title="Reset Seluruh Suara Masuk"
+                 message="PERINGATAN: Tindakan ini akan menghapus SEMUA surat suara yang telah masuk (perolehan suara kembali 0) dan mengembalikan status semua pemilih menjadi 'Belum Memilih'. Apakah Anda yakin?"
+                 type="danger"
+                 confirm-text="Ya, Kosongkan Suara"
+                 cancel-text="Batal"
+                 @confirm="submitResetVotes"
+                 @cancel="showResetVotesModal = false"
+             />
          </div>
      </AdminLayout>
  </template>
@@ -901,6 +952,7 @@ import { router, Link } from '@inertiajs/vue3';
          status: string;
          total_votes: number;
          total_voters: number;
+         total_voted_users?: number;
          turnout_percentage: number;
          max_votes_per_voter?: number;
          stage_schedules?: Record<string | number, { max_votes: number }>;
@@ -910,6 +962,25 @@ import { router, Link } from '@inertiajs/vue3';
      results: any[];
      leadingCandidate: any | null;
  }>();
+
+ const effectiveMaxVotes = computed(() => {
+     if (props.election.is_multi_stage) {
+         const stageMax = props.election.stage_schedules?.[props.selectedStage]?.max_votes;
+         if (stageMax && Number(stageMax) > 0) {
+             return Number(stageMax);
+         }
+     }
+     return Number(props.election.max_votes_per_voter) || 1;
+ });
+
+ const leadingCandidates = computed(() => {
+     if (!props.results) return [];
+     const limit = effectiveMaxVotes.value;
+     return [...props.results]
+         .filter((c) => c.votes_count > 0 && c.is_qualified !== false)
+         .sort((a, b) => (Number(b.votes_count) || 0) - (Number(a.votes_count) || 0))
+         .slice(0, limit);
+ });
 
  const showAdvanceModal = ref(false);
  const showResetModal = ref(false);
@@ -994,6 +1065,24 @@ const submitResetStages = () => {
         {
             onFinish: () => {
                 showResetModal.value = false;
+            },
+        },
+    );
+};
+
+const showResetVotesModal = ref(false);
+
+const confirmResetVotes = () => {
+    showResetVotesModal.value = true;
+};
+
+const submitResetVotes = () => {
+    router.post(
+        `/admin/pemilihan/${props.election.id}/reset-votes`,
+        {},
+        {
+            onFinish: () => {
+                showResetVotesModal.value = false;
             },
         },
     );

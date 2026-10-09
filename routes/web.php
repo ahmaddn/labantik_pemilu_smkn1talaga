@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pemilihan/{election}/hasil/pdf', [ResultController::class, 'downloadPdf'])->name('elections.results.pdf');
         Route::post('/pemilihan/{election}/advance-stage', [ResultController::class, 'advanceStage'])->name('elections.advance-stage');
         Route::post('/pemilihan/{election}/reset-stages', [ResultController::class, 'resetStages'])->name('elections.reset-stages');
+        Route::post('/pemilihan/{election}/reset-votes', [ResultController::class, 'resetVotes'])->name('elections.reset-votes');
 
         // Simulation Routes
         Route::get('/pemilihan/{election}/simulasi', [SimulationController::class, 'show'])->name('elections.simulation.show');

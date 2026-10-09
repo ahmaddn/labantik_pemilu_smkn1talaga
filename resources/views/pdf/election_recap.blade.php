@@ -215,8 +215,15 @@
                 <strong>{{ number_format($totalVoters, 0, ',', '.') }}</strong>
             </td>
             <td>
+                <span>Pemilih Hadir / Mencoblos</span>
+                <strong>{{ number_format($totalVotedUsers, 0, ',', '.') }} Pemilih</strong>
+            </td>
+            <td>
                 <span>Total Suara Masuk</span>
-                <strong>{{ number_format($totalVotes, 0, ',', '.') }}</strong>
+                <strong>{{ number_format($totalVotes, 0, ',', '.') }} Suara</strong>
+                @if(isset($maxVotes) && $maxVotes > 1)
+                    <small style="font-size: 7.5pt; color: #64748b; display: block;">(Maks. {{ $maxVotes }} suara/pemilih)</small>
+                @endif
             </td>
             <td>
                 <span>Tingkat Partisipasi</span>
@@ -230,6 +237,10 @@
     </table>
 
     {{-- TABEL HASIL PEROLEHAN SUARA --}}
+    @php
+        $effectiveMaxVotes = $maxVotes ?? ($election->max_votes_per_voter ?? 1);
+        $isFinalOrSingle = !$election->is_multi_stage || $selectedStage >= $election->total_stages;
+    @endphp
     <table class="table-result">
         <thead>
             <tr>
@@ -241,7 +252,7 @@
             </tr>
         </thead>
         <tbody>
-            @forelse($results as $cand)
+            @forelse($results as $index => $cand)
             <tr>
                 <td class="text-center font-bold">{{ $cand['candidate_number'] }}</td>
                 <td>
@@ -265,10 +276,14 @@
                     {{ $cand['percentage'] }}%
                 </td>
                 <td class="text-center" style="font-size: 8.5pt;">
-                    @if($leadingCandidate && $leadingCandidate['id'] === $cand['id'] && $cand['votes_count'] > 0)
-                        <strong style="color: #0369a1;">SUARA TERBANYAK</strong>
-                    @elseif(isset($cand['is_qualified']) && $cand['is_qualified'] === false)
+                    @if(isset($cand['is_qualified']) && $cand['is_qualified'] === false)
                         <span style="color: #b91c1c;">Gugur (Tahap {{ $cand['eliminated_at_stage'] ?? 1 }})</span>
+                    @elseif($cand['votes_count'] > 0 && $index < $effectiveMaxVotes)
+                        @if($isFinalOrSingle)
+                            <strong style="color: #0369a1;">JUARA {{ $index + 1 }} (TERPILIH)</strong>
+                        @else
+                            <strong style="color: #0369a1;">LOLOS (PERINGKAT {{ $index + 1 }})</strong>
+                        @endif
                     @else
                         <span>Memenuhi Syarat</span>
                     @endif
